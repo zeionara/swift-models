@@ -140,6 +140,8 @@ let package = Package(
         .testTarget(name: "CheckpointTests", dependencies: ["Checkpoints"]),
         .target(
             name: "BERT-CoLA", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/BERT-CoLA"),
+        .target(
+                name: "BERT-Russian", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/BERT-Russian"),
         .testTarget(name: "SupportTests", dependencies: ["ModelSupport"]),
         .target(
             name: "CycleGAN",
