@@ -41,15 +41,21 @@ public struct Vocabulary {
     internal let tokensToIds: [String: Int]
     internal let idsToTokens: [Int: String]
 
-    public var count: Int { tokensToIds.count }
+    public var count: Int {
+        tokensToIds.count
+    }
 
     public init(tokensToIds: [String: Int]) {
         self.tokensToIds = tokensToIds
-        self.idsToTokens = [Int: String](uniqueKeysWithValues: tokensToIds.map { ($1, $0) })
+        self.idsToTokens = [Int: String](uniqueKeysWithValues: tokensToIds.map {
+            ($1, $0)
+        })
     }
 
     public init(idsToTokens: [Int: String]) {
-        self.tokensToIds = [String: Int](uniqueKeysWithValues: idsToTokens.map { ($1, $0) })
+        self.tokensToIds = [String: Int](uniqueKeysWithValues: idsToTokens.map {
+            ($1, $0)
+        })
         self.idsToTokens = idsToTokens
     }
 
@@ -64,26 +70,50 @@ public struct Vocabulary {
     public func token(forId id: Int) -> String? {
         idsToTokens[id]
     }
+
+    public func oneHotEncoding(forId id: Int) -> Tensor<Float> {
+        Tensor((0..<count).map { i -> Float in
+            i == id ? 1.0 : 0.0
+        })
+    }
+
+    public func oneHotEncodings(forIds tokenIds: [Int]) -> Tensor<Float> {
+        Tensor(tokenIds.map(oneHotEncoding))
+    }
 }
 
 extension Vocabulary {
     public init(fromFile fileURL: URL) throws {
-        self.init(
-        tokensToIds: [String: Int](
-            (try String(contentsOfFile: fileURL.path, encoding: .utf8))
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { $0.count > 0 }
-                .enumerated().map { ($0.element, $0.offset) },
-            uniquingKeysWith: { (v1, v2) in max(v1, v2) }))
+        var tokenToIds = [String: Int](
+                (try String(contentsOfFile: fileURL.path, encoding: .utf8))
+                        .components(separatedBy: .newlines)
+                        .map {
+                            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                        .filter {
+                            $0.count > 0
+                        }
+                        .enumerated().map {
+                            ($0.element, $0.offset + 4)
+                        },
+                uniquingKeysWith: { (v1, v2) in max(v1, v2) }
+        )
+        tokenToIds.merge(["[CLS]": 0, "[PAD]": 1, "[SEP]": 2, "[UNK]": 3]) { (_, new) in
+            new
+        }
+        self.init(tokensToIds: tokenToIds)
     }
 
     public func save(toFile fileURL: URL) throws {
         try idsToTokens
-            .sorted { $0.key < $1.key }
-            .map { $0.1 }
-            .joined(separator: "\n")
-            .write(to: fileURL, atomically: true, encoding: .utf8)
+                .sorted {
+                    $0.key < $1.key
+                }
+                .map {
+                    $0.1
+                }
+                .joined(separator: "\n")
+                .write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
 
@@ -91,8 +121,8 @@ extension Vocabulary {
     public init(fromJSONFile fileURL: URL) throws {
         let json = try String(contentsOfFile: fileURL.path)
         let tokensToIds = try JSONDecoder().decode(
-            [String: Int].self,
-            from: json.data(using: .utf8)!)
+                [String: Int].self,
+                from: json.data(using: .utf8)!)
         self.init(tokensToIds: tokensToIds)
     }
 }
@@ -126,18 +156,18 @@ public struct BasicTokenizer: Tokenizer {
 
                 // Strip accents.
                 processed = processed.replacingOccurrences(
-                    of: #"\p{Mn}"#,
-                    with: "",
-                    options: .regularExpression)
+                        of: #"\p{Mn}"#,
+                        with: "",
+                        options: .regularExpression)
             }
 
             // Split punctuation. We treat all non-letter/number ASCII as punctuation. Characters
             // such as "$" are not in the Unicode Punctuation class but we treat them as
             // punctuation anyways for consistency.
             processed = processed.replacingOccurrences(
-                of: #"([\p{P}!-/:-@\[-`{-~])"#,
-                with: " $1 ",
-                options: .regularExpression)
+                    of: #"([\p{P}!-/:-@\[-`{-~])"#,
+                    with: " $1 ",
+                    options: .regularExpression)
 
             return processed.split(separator: " ").map(String.init)
         }
@@ -169,7 +199,9 @@ public struct GreedySubwordTokenizer: Tokenizer {
 
     public func tokenize(_ text: String) -> [String] {
         clean(text).split(separator: " ").flatMap { token -> [String] in
-            if let maxLength = maxTokenLength, token.count > maxLength { return [unknownToken] }
+            if let maxLength = maxTokenLength, token.count > maxLength {
+                return [unknownToken]
+            }
             var isBad = false
             var start = token.startIndex
             var subTokens = [String]()
@@ -214,15 +246,15 @@ public struct GreedySubwordTokenizer: Tokenizer {
 internal func clean(_ text: String) -> String {
     // Normalize whitespaces.
     let afterWhitespace = text.replacingOccurrences(
-        of: #"\s+"#,
-        with: " ",
-        options: .regularExpression)
+            of: #"\s+"#,
+            with: " ",
+            options: .regularExpression)
 
     // Remove control characters.
     let afterControl = afterWhitespace.replacingOccurrences(
-        of: #"[\x{0000}\x{fffd}\p{C}]"#,
-        with: "",
-        options: .regularExpression)
+            of: #"[\x{0000}\x{fffd}\p{C}]"#,
+            with: "",
+            options: .regularExpression)
 
     // Add whitespace around CJK characters.
     //
@@ -234,16 +266,16 @@ internal func clean(_ text: String) -> String {
     // Katakana. Those alphabets are used to write space-separated words, and so they are not
     // treated specially and are instead handled like all of the other languages.
     let afterCJK = afterControl.replacingOccurrences(
-        of: #"([\p{InCJK_Unified_Ideographs}"# +
-            #"\p{InCJK_Unified_Ideographs_Extension_A}"# +
-            #"\p{InCJK_Compatibility_Ideographs}"# +
-            #"\x{20000}-\x{2a6df}"# +
-            #"\x{2a700}-\x{2b73f}"# +
-            #"\x{2b740}-\x{2b81f}"# +
-            #"\x{2b820}-\x{2ceaf}"# +
-            #"\x{2f800}-\x{2fa1f}])"#,
-        with: " $1 ",
-        options: .regularExpression)
+            of: #"([\p{InCJK_Unified_Ideographs}"# +
+                    #"\p{InCJK_Unified_Ideographs_Extension_A}"# +
+                    #"\p{InCJK_Compatibility_Ideographs}"# +
+                    #"\x{20000}-\x{2a6df}"# +
+                    #"\x{2a700}-\x{2b73f}"# +
+                    #"\x{2b740}-\x{2b81f}"# +
+                    #"\x{2b820}-\x{2ceaf}"# +
+                    #"\x{2f800}-\x{2fa1f}])"#,
+            with: " $1 ",
+            options: .regularExpression)
 
     return afterCJK
 }

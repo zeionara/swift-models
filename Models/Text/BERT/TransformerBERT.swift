@@ -49,13 +49,23 @@ public struct TransformerEncoder: Layer, Regularizable {
     public typealias Scalar = Float
 
     @noDerivative public let hiddenSize: Int
-
+//    public var ent: Sequential<Dense<Scalar>, Dense<Scalar>> // TransformerEncoderLayer
     public var encoderLayers: [TransformerEncoderLayer]
 
     public var regularizationValue: TangentVector {
         TangentVector(
-            encoderLayers: [TransformerEncoderLayer].TangentVector(
-                encoderLayers.map { $0.regularizationValue }))
+//                ent: ent.layer1.zeroTangentVector
+//        ent: [Dense<Scalar>].TangentVector(
+//                        ent.map {
+//                            $0.regularizationValue
+//                        }
+//                )
+                encoderLayers: [TransformerEncoderLayer].TangentVector(
+                        encoderLayers.map {
+                            $0.regularizationValue
+                        }
+                )
+        )
     }
 
     /// Creates a transformer encoder.
@@ -84,54 +94,55 @@ public struct TransformerEncoder: Layer, Regularizable {
     ///   - outputWeightInitializer: Initializer for the output transformation weight.
     ///   - outputBiasInitializer: Initializer for the output transformation bias.
     public init(
-        hiddenSize: Int,
-        layerCount: Int,
-        attentionHeadCount: Int,
-        attentionQueryActivation: @escaping Activation<Scalar>,
-        attentionKeyActivation: @escaping Activation<Scalar>,
-        attentionValueActivation: @escaping Activation<Scalar>,
-        intermediateSize: Int,
-        intermediateActivation: @escaping Activation<Scalar>,
-        hiddenDropoutProbability: Scalar,
-        attentionDropoutProbability: Scalar,
-        queryWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        queryBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        keyWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        keyBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        valueWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        valueBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        attentionWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        attentionBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        intermediateWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        intermediateBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        outputWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        outputBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer
+            hiddenSize: Int,
+            layerCount: Int,
+            attentionHeadCount: Int,
+            attentionQueryActivation: @escaping Activation<Scalar>,
+            attentionKeyActivation: @escaping Activation<Scalar>,
+            attentionValueActivation: @escaping Activation<Scalar>,
+            intermediateSize: Int,
+            intermediateActivation: @escaping Activation<Scalar>,
+            hiddenDropoutProbability: Scalar,
+            attentionDropoutProbability: Scalar,
+            queryWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            queryBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            keyWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            keyBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            valueWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            valueBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            attentionWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            attentionBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            intermediateWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            intermediateBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            outputWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            outputBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer
     ) {
         self.hiddenSize = hiddenSize
         self.encoderLayers = (0..<layerCount).map { _ in
             TransformerEncoderLayer(
-                hiddenSize: hiddenSize,
-                attentionHeadCount: attentionHeadCount,
-                attentionQueryActivation: attentionQueryActivation,
-                attentionKeyActivation: attentionKeyActivation,
-                attentionValueActivation: attentionValueActivation,
-                intermediateSize: intermediateSize,
-                intermediateActivation: intermediateActivation,
-                hiddenDropoutProbability: hiddenDropoutProbability,
-                attentionDropoutProbability: attentionDropoutProbability,
-                queryWeightInitializer: queryWeightInitializer,
-                queryBiasInitializer: queryBiasInitializer,
-                keyWeightInitializer: keyWeightInitializer,
-                keyBiasInitializer: keyBiasInitializer,
-                valueWeightInitializer: valueWeightInitializer,
-                valueBiasInitializer: valueBiasInitializer,
-                attentionWeightInitializer: attentionWeightInitializer,
-                attentionBiasInitializer: attentionBiasInitializer,
-                intermediateWeightInitializer: intermediateWeightInitializer,
-                intermediateBiasInitializer: intermediateBiasInitializer,
-                outputWeightInitializer: outputWeightInitializer,
-                outputBiasInitializer: outputBiasInitializer)
+                    hiddenSize: hiddenSize,
+                    attentionHeadCount: attentionHeadCount,
+                    attentionQueryActivation: attentionQueryActivation,
+                    attentionKeyActivation: attentionKeyActivation,
+                    attentionValueActivation: attentionValueActivation,
+                    intermediateSize: intermediateSize,
+                    intermediateActivation: intermediateActivation,
+                    hiddenDropoutProbability: hiddenDropoutProbability,
+                    attentionDropoutProbability: attentionDropoutProbability,
+                    queryWeightInitializer: queryWeightInitializer,
+                    queryBiasInitializer: queryBiasInitializer,
+                    keyWeightInitializer: keyWeightInitializer,
+                    keyBiasInitializer: keyBiasInitializer,
+                    valueWeightInitializer: valueWeightInitializer,
+                    valueBiasInitializer: valueBiasInitializer,
+                    attentionWeightInitializer: attentionWeightInitializer,
+                    attentionBiasInitializer: attentionBiasInitializer,
+                    intermediateWeightInitializer: intermediateWeightInitializer,
+                    intermediateBiasInitializer: intermediateBiasInitializer,
+                    outputWeightInitializer: outputWeightInitializer,
+                    outputBiasInitializer: outputBiasInitializer)
         }
+//        self.ent = Sequential(Dense(inputSize: 10, outputSize: 2), Dense(inputSize: 10, outputSize: 2)) // self.encoderLayers[0] Array.init(repeating: Dense(inputSize: 10, outputSize: 2), count: 2)
     }
 
     @differentiable
@@ -139,21 +150,26 @@ public struct TransformerEncoder: Layer, Regularizable {
         // The transformer performs sum residuals on all layers and so the input needs to have the
         // same depth as hidden size of the transformer.
         precondition(
-            input.sequence.shape[2] == hiddenSize,
-            "The depth of the input tensor (\(input.sequence.shape[2]) is different "
-                + "than the hidden size (\(hiddenSize).")
+                input.sequence.shape[1] == hiddenSize,
+                "The depth of the input tensor (\(input.sequence.shape[1]) is different "
+                        + "than the hidden size (\(hiddenSize).")
 
         // We keep the representation as a 2-D tensor to avoid reshaping it back and forth from a
         // 3-D tensor to a 2-D tensor. Reshapes are normally free on GPUs/CPUs but may not be free
         // on TPUs, and so we want to minimize them to help the optimizer.
-        var transformerInput = input.sequence.reshapedToMatrix()
-        let batchSize = input.sequence.shape[0]
-        for layerIndex in 0..<(withoutDerivative(at: encoderLayers) { $0.count }) {
+        var transformerInput = input.sequence // .reshapedToMatrix()
+//        let batchSize = input.sequence.shape[0]
+        for layerIndex in 0..<(withoutDerivative(at: encoderLayers) {
+            $0.count
+        }) {
+            print(layerIndex)
             transformerInput = encoderLayers[layerIndex](
-                TransformerInput(
-                    sequence: transformerInput,
-                    attentionMask: input.attentionMask,
-                    batchSize: batchSize))
+                    TransformerInput(
+                            sequence: transformerInput,
+                            attentionMask: input.attentionMask,
+                            batchSize: input.batchSize
+                    )
+            )
         }
 
         return transformerInput.reshapedFromMatrix(originalShape: input.sequence.shape)
@@ -195,15 +211,16 @@ public struct TransformerEncoderLayer: Layer, Regularizable {
 
     public var regularizationValue: TangentVector {
         TangentVector(
-            multiHeadAttention: multiHeadAttention.regularizationValue,
-            attentionWeight: attentionWeight,
-            attentionBias: Tensor(Scalar(0), on: attentionBias.device),
-            attentionLayerNorm: attentionLayerNorm.regularizationValue,
-            intermediateWeight: intermediateWeight,
-            intermediateBias: Tensor(Scalar(0), on: intermediateBias.device),
-            outputWeight: outputWeight,
-            outputBias: Tensor(Scalar(0), on: outputBias.device),
-            outputLayerNorm: outputLayerNorm.regularizationValue)
+                multiHeadAttention: multiHeadAttention.regularizationValue,
+                attentionWeight: attentionWeight,
+                attentionBias: Tensor(Scalar(0), on: attentionBias.device),
+                attentionLayerNorm: attentionLayerNorm.regularizationValue,
+                intermediateWeight: intermediateWeight,
+                intermediateBias: Tensor(Scalar(0), on: intermediateBias.device),
+                outputWeight: outputWeight,
+                outputBias: Tensor(Scalar(0), on: outputBias.device),
+                outputLayerNorm: outputLayerNorm.regularizationValue
+        )
     }
 
     /// Creates a transformer encoder layer.
@@ -231,58 +248,58 @@ public struct TransformerEncoderLayer: Layer, Regularizable {
     ///   - outputWeightInitializer: Initializer for the output transformation weight.
     ///   - outputBiasInitializer: Initializer for the output transformation bias.
     public init(
-        hiddenSize: Int,
-        attentionHeadCount: Int,
-        attentionQueryActivation: @escaping Activation<Scalar>,
-        attentionKeyActivation: @escaping Activation<Scalar>,
-        attentionValueActivation: @escaping Activation<Scalar>,
-        intermediateSize: Int,
-        intermediateActivation: @escaping Activation<Scalar>,
-        hiddenDropoutProbability: Scalar,
-        attentionDropoutProbability: Scalar,
-        queryWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        queryBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        keyWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        keyBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        valueWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        valueBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        attentionWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        attentionBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        intermediateWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        intermediateBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
-        outputWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
-        outputBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer
+            hiddenSize: Int,
+            attentionHeadCount: Int,
+            attentionQueryActivation: @escaping Activation<Scalar>,
+            attentionKeyActivation: @escaping Activation<Scalar>,
+            attentionValueActivation: @escaping Activation<Scalar>,
+            intermediateSize: Int,
+            intermediateActivation: @escaping Activation<Scalar>,
+            hiddenDropoutProbability: Scalar,
+            attentionDropoutProbability: Scalar,
+            queryWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            queryBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            keyWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            keyBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            valueWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            valueBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            attentionWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            attentionBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            intermediateWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            intermediateBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer,
+            outputWeightInitializer: ParameterInitializer<Scalar> = defaultWeightInitializer,
+            outputBiasInitializer: ParameterInitializer<Scalar> = defaultBiasInitializer
     ) {
         precondition(
-            hiddenSize % attentionHeadCount == 0,
-            "The hidden size of the transformer (\(hiddenSize)) must be a multiple of the "
-                + "attention head count (\(attentionHeadCount)).")
+                hiddenSize % attentionHeadCount == 0,
+                "The hidden size of the transformer (\(hiddenSize)) must be a multiple of the "
+                        + "attention head count (\(attentionHeadCount)).")
         self.hiddenSize = hiddenSize
         self.intermediateActivation = intermediateActivation
         self.multiHeadAttention = MultiHeadAttention(
-            sourceSize: hiddenSize,
-            targetSize: hiddenSize,
-            headCount: attentionHeadCount,
-            headSize: hiddenSize / attentionHeadCount,
-            queryActivation: attentionQueryActivation,
-            keyActivation: attentionKeyActivation,
-            valueActivation: attentionValueActivation,
-            attentionDropoutProbability: attentionDropoutProbability,
-            matrixResult: true,
-            queryWeightInitializer: queryWeightInitializer,
-            queryBiasInitializer: queryBiasInitializer,
-            keyWeightInitializer: keyWeightInitializer,
-            keyBiasInitializer: keyBiasInitializer,
-            valueWeightInitializer: valueWeightInitializer,
-            valueBiasInitializer: valueBiasInitializer)
+                sourceSize: hiddenSize,
+                targetSize: hiddenSize,
+                headCount: attentionHeadCount,
+                headSize: hiddenSize / attentionHeadCount,
+                queryActivation: attentionQueryActivation,
+                keyActivation: attentionKeyActivation,
+                valueActivation: attentionValueActivation,
+                attentionDropoutProbability: attentionDropoutProbability,
+                matrixResult: true,
+                queryWeightInitializer: queryWeightInitializer,
+                queryBiasInitializer: queryBiasInitializer,
+                keyWeightInitializer: keyWeightInitializer,
+                keyBiasInitializer: keyBiasInitializer,
+                valueWeightInitializer: valueWeightInitializer,
+                valueBiasInitializer: valueBiasInitializer)
         // TODO: Make dropout generic over the probability type.
         self.hiddenDropout = Dropout(probability: Double(hiddenDropoutProbability))
         self.attentionWeight = attentionWeightInitializer(
-            [attentionHeadCount * hiddenSize / attentionHeadCount, hiddenSize])
+                [attentionHeadCount * hiddenSize / attentionHeadCount, hiddenSize])
         self.attentionBias = attentionBiasInitializer([hiddenSize])
         self.attentionLayerNorm = LayerNorm(
-            featureCount: hiddenSize,
-            axis: -1)
+                featureCount: hiddenSize,
+                axis: -1)
         self.intermediateWeight = intermediateWeightInitializer([hiddenSize, intermediateSize])
         self.intermediateBias = intermediateBiasInitializer([intermediateSize])
         self.outputWeight = intermediateWeightInitializer([intermediateSize, hiddenSize])
@@ -293,10 +310,10 @@ public struct TransformerEncoderLayer: Layer, Regularizable {
     @differentiable
     public func callAsFunction(_ input: TransformerInput<Scalar>) -> Tensor<Scalar> {
         let attentionInput = AttentionInput(
-            source: input.sequence,
-            target: input.sequence,
-            mask: input.attentionMask,
-            batchSize: input.batchSize)
+                source: input.sequence,
+                target: input.sequence,
+                mask: input.attentionMask,
+                batchSize: input.batchSize)
         var attentionOutput = multiHeadAttention(attentionInput)
 
         // Run a linear projection of `hiddenSize` and then add a residual connection to the input.

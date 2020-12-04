@@ -20,14 +20,122 @@ import TextModels
 import TrainingLoop
 import x10_optimizers_optimizer
 
+let projectRoot = "\(ProcessInfo.processInfo.environment["HOME"]!)/swift-models"
 let device = Device.default
+let specialTokens = [String]() // ["[CLS]", "[SEP]", "[UNK]"]
 
-let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "/home/zeio/swift-models/assets/bert-russian/vocabulary.txt"))
+extension Array {
+    public func applyMask(mask: [Int32], reversed: Bool = false) -> [Element] {
+        var result = [Element]()
+
+        for (i, item) in enumerated() {
+            if mask[i] == 0 && reversed || mask[i] == 1 && !reversed {
+                result.append(item)
+            }
+        }
+
+        return result
+    }
+}
+
+func generateVocabulary(corpusName: String) throws {
+    let corpusRoot = "\(projectRoot)/assets/\(corpusName)"
+    let corpusFilePath = URL(fileURLWithPath: "\(corpusRoot)/sentences.txt")
+    let vocabularyFilePath = URL(fileURLWithPath: "\(corpusRoot)/vocabulary.txt")
+
+    let tokenizer = BasicTokenizer(caseSensitive: false)
+    let stringSentences = try String(contentsOf: corpusFilePath)
+
+    let tokens = specialTokens + tokenizer.tokenize(stringSentences)
+    try tokens.joined(separator: "\n").write(to: vocabularyFilePath, atomically: false, encoding: .utf8)
+}
+
+try generateVocabulary(corpusName: "baneks")
+
+let nMaskedTokensPerSequence = 5
+let stringSentences = try String(contentsOf: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/sentences.txt")).components(separatedBy: "\n")
+let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/vocabulary.txt"))
 var model = BERT(variant: .bert, vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), caseSensitive: false)
-let text = ["один два", "два"]
-let preprocessedText = model.preprocess(sequences: text)
+//let text = ["один два", "два"]
+let preprocessedText = model.preprocess(sequences: stringSentences, nMaskedTokens: nMaskedTokensPerSequence)
 let weights = model(preprocessedText)
-print(weights.shape)
+//print(preprocessedText)
+
+var languageModel = BERTLanguageModel(bert: model)
+let preds = languageModel(preprocessedText)
+
+let mask = preprocessedText.languageModelMask!.flattened().unstacked().map{ i in i.scalar!}
+//print(preprocessedText.languageModelMask!.flattened().unstacked().map{ i in i.scalar!})
+let probs = Tensor(preds.reshaped(to: [-1, model.vocabulary.count]).unstacked().applyMask(mask: mask, reversed: true))
+//print(preprocessedText.tokenIds.flattened().unstacked().map{ i in i.scalar!}.applyMask(mask: mask, reversed: true))
+let labels = model.vocabulary.oneHotEncodings(forIds: preprocessedText.tokenIds.flattened().unstacked().map{ i in Int(i.scalar!)}.applyMask(mask: mask, reversed: true))
+
+//print(kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1)))
+
+//var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
+//        for: languageModel,
+//        TensorVisitorPlan(languageModel.differentiableVectorView),
+//        defaultOptimizer: makeSGD(
+//                learningRate: 0.02
+//        )
+//)
+
+//var optimizer = SGD(for: languageModel)
+
+var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
+        for: languageModel,
+        TensorVisitorPlan(languageModel.differentiableVectorView),
+        defaultOptimizer: makeSGD(
+                learningRate: 0.02
+        )
+)
+
+for _ in 0..<4 {
+
+    let (loss, grad) = valueWithGradient(at: languageModel) { model -> Tensor<Float> in
+        let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
+        print(res)
+        return res
+    }
+
+    print(loss, grad)
+
+    optimizer.update(&languageModel, along: grad)
+}
+
+
+///
+///
+///
+
+
+//var trainingLoop: TrainingLoop = TrainingLoop(
+//        training: cola.trainingEpochs,
+//        validation: cola.validationBatches,
+//        optimizer: optimizer,
+//        lossFunction: sigmoidCrossEntropyReshaped,
+//        metrics: [.matthewsCorrelationCoefficient],
+//        callbacks: [
+//            clipGradByGlobalNorm,
+//            LearningRateScheduler(
+//                    scheduledParameterGetter: scheduledParameterGetter,
+//                    biasCorrectionBeta1: beta1,
+//                    biasCorrectionBeta2: beta2).schedule
+//        ])
+
+
+
+///
+///
+///
+
+//let (nSequences, nTokensPerSequence, nTokensInVocabulary) = (languageModel(preprocessedText).shape[0], languageModel(preprocessedText).shape[1], languageModel(preprocessedText).shape[2])
+//
+//for sequenceId in 0..<nSequences {
+//    let sequenceTokensAttentionMask = preprocessedText.mask[sequenceId]
+//    print(sequenceTokensAttentionMask)
+//}
+
 
 //var bertPretrained: BERT.PreTrainedModel
 //if CommandLine.arguments.count >= 2 {
