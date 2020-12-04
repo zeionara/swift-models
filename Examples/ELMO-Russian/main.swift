@@ -38,7 +38,7 @@ extension Array {
     }
 }
 
-public func generateVocabulary(corpusName: String) throws {
+func generateVocabulary(corpusName: String) throws {
     let corpusRoot = "\(projectRoot)/assets/\(corpusName)"
     let corpusFilePath = URL(fileURLWithPath: "\(corpusRoot)/sentences.txt")
     let vocabularyFilePath = URL(fileURLWithPath: "\(corpusRoot)/vocabulary.txt")
@@ -51,26 +51,30 @@ public func generateVocabulary(corpusName: String) throws {
 }
 
 try generateVocabulary(corpusName: "baneks")
-
-let nMaskedTokensPerSequence = 5
+//
+//let nMaskedTokensPerSequence = 5
 let stringSentences = try String(contentsOf: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/sentences.txt")).components(separatedBy: "\n")
-let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/vocabulary.txt"))
-var model = BERT(variant: .bert, vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), caseSensitive: false)
-//let text = ["один два", "два"]
-let preprocessedText = model.preprocess(sequences: stringSentences, nMaskedTokens: nMaskedTokensPerSequence)
-let weights = model(preprocessedText)
+let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/vocabulary.txt"), bert: false)
+var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: 20, hiddenSize: 10)
+let text = ["один два", "два"]
+let preprocessedText = model.preprocess(sequences: stringSentences)
 //print(preprocessedText)
+let probs = model(preprocessedText)
+//print(probs.shape)
+let predictedWordIndices = preprocessedText.flattened().unstacked().map{ i in i.scalar!}.dropFirst() + [0]
+let labels = model.vocabulary.oneHotEncodings(forIds: predictedWordIndices.map{Int($0)})
+//print(labels.shape)
+//
+//var languageModel = BERTLanguageModel(bert: model)
+//let preds = languageModel(preprocessedText)
 
-var languageModel = BERTLanguageModel(bert: model)
-let preds = languageModel(preprocessedText)
-
-let mask = preprocessedText.languageModelMask!.flattened().unstacked().map{ i in i.scalar!}
+//let mask = preprocessedText.languageModelMask!.flattened().unstacked().map{ i in i.scalar!}
 //print(preprocessedText.languageModelMask!.flattened().unstacked().map{ i in i.scalar!})
-let probs = Tensor(preds.reshaped(to: [-1, model.vocabulary.count]).unstacked().applyMask(mask: mask, reversed: true))
+//let probs = Tensor(preds.reshaped(to: [-1, model.vocabulary.count]).unstacked().applyMask(mask: mask, reversed: true))
 //print(preprocessedText.tokenIds.flattened().unstacked().map{ i in i.scalar!}.applyMask(mask: mask, reversed: true))
-let labels = model.vocabulary.oneHotEncodings(forIds: preprocessedText.tokenIds.flattened().unstacked().map{ i in Int(i.scalar!)}.applyMask(mask: mask, reversed: true))
+//let labels = model.vocabulary.oneHotEncodings(forIds: preprocessedText.tokenIds.flattened().unstacked().map{ i in Int(i.scalar!)}.applyMask(mask: mask, reversed: true))
 
-//print(kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1)))
+print(kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1)))
 
 //var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
 //        for: languageModel,
@@ -80,27 +84,28 @@ let labels = model.vocabulary.oneHotEncodings(forIds: preprocessedText.tokenIds.
 //        )
 //)
 
-//var optimizer = SGD(for: languageModel)
+var optimizer = SGD(for: model)
 
-var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
-        for: languageModel,
-        TensorVisitorPlan(languageModel.differentiableVectorView),
-        defaultOptimizer: makeSGD(
-                learningRate: 0.02
-        )
-)
+//var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
+//        for: languageModel,
+//        TensorVisitorPlan(languageModel.differentiableVectorView),
+//        defaultOptimizer: makeSGD(
+//                learningRate: 0.02
+//        )
+//)
 
-for _ in 0..<4 {
+for _ in 0..<400 {
 
-    let (loss, grad) = valueWithGradient(at: languageModel) { model -> Tensor<Float> in
+    let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
+        let probs = model(preprocessedText)
         let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
-        print(res)
+//        print(res)
         return res
     }
 
-    print(loss, grad)
+    print(loss)
 
-    optimizer.update(&languageModel, along: grad)
+    optimizer.update(&model, along: grad)
 }
 
 

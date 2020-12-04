@@ -142,6 +142,8 @@ let package = Package(
             name: "BERT-CoLA", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/BERT-CoLA"),
         .target(
                 name: "BERT-Russian", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/BERT-Russian"),
+        .target(
+                name: "ELMO-Russian", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/ELMO-Russian"),
         .testTarget(name: "SupportTests", dependencies: ["ModelSupport"]),
         .target(
             name: "CycleGAN",

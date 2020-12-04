@@ -83,7 +83,7 @@ public struct Vocabulary {
 }
 
 extension Vocabulary {
-    public init(fromFile fileURL: URL) throws {
+    public init(fromFile fileURL: URL, bert: Bool = true) throws {
         var tokenToIds = [String: Int](
                 (try String(contentsOfFile: fileURL.path, encoding: .utf8))
                         .components(separatedBy: .newlines)
@@ -94,12 +94,18 @@ extension Vocabulary {
                             $0.count > 0
                         }
                         .enumerated().map {
-                            ($0.element, $0.offset + 4)
+                            ($0.element, $0.offset + (bert ? 4 : 0))
                         },
                 uniquingKeysWith: { (v1, v2) in max(v1, v2) }
         )
-        tokenToIds.merge(["[CLS]": 0, "[PAD]": 1, "[SEP]": 2, "[UNK]": 3]) { (_, new) in
-            new
+        if bert {
+            tokenToIds.merge(["[CLS]": 0, "[PAD]": 1, "[SEP]": 2, "[UNK]": 3]) { (_, new) in
+                new
+            }
+        } else {
+            tokenToIds.merge(["[EOS]": 0]) { (_, new) in
+                new
+            }
         }
         self.init(tokensToIds: tokenToIds)
     }

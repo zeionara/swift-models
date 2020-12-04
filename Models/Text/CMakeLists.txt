@@ -1,6 +1,7 @@
 add_library(TextModels
         BERT/Attention.swift
         BERT/BERT.swift
+        ELMO/ELMO.swift
         BERT/BERTClassifier.swift
         BERT/BERTLanguageModel.swift
         BERT/BERTCheckpointReader.swift
