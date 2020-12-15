@@ -21,7 +21,10 @@
             "preLaunchTask": "swift-build",
             "name": "Run lenet mnist",
             "program": "${workspaceFolder}/.build/debug/LeNet-MNIST",
-            "args": [],
+            "args": [
+                "-a",
+                "4"
+            ],
             "sourceLanguages": [
                 "swift"
             ],

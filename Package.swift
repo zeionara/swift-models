@@ -82,7 +82,11 @@ let package = Package(
             path: "Examples/Shallow-Water-PDE"),
         .target(
             name: "LeNet-MNIST",
-            dependencies: ["Datasets", "ImageClassificationModels", "TrainingLoop", .product(name: "Logging", package: "swift-log")],
+            dependencies: [
+                "Datasets", "ImageClassificationModels", "TrainingLoop",
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser")
+            ],
             path: "Examples/LeNet-MNIST"),
         .target(
             name: "MobileNetV1-Imagenette",

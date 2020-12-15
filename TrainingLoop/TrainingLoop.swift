@@ -290,6 +290,8 @@ where
   /// The index of the current epoch.
   public var epochIndex: Int? = nil
 
+  public let accuracy: Int
+
   // MARK: - Others
 
   /// The log for last statistics
@@ -304,12 +306,14 @@ where
     lossFunction: @escaping LossFunction.F,
     metrics: [TrainingMetrics] = [],
     callbacks: [TrainingLoopCallback<Self>] = [],
-    includeDefaultCallbacks: Bool = true
+    includeDefaultCallbacks: Bool = true,
+    accuracy: Int = 3
   ) {
     logger.logLevel = .info
     self.training = training
     self.validation = validation
     self.optimizer = optimizer
+    self.accuracy = accuracy
     self.lossFunction = LossFunction(lossFunction) { output, target in
       // print("Computing cv...")
       computeSoftmaxCrossEntropy((output as! Tensor<StudentScalar>), (target as! Tensor<StudentScalar>))
@@ -493,7 +497,7 @@ extension TrainingLoop {
           try handleEvent(.epochStart)
 
           // Training phase
-          try measureExecitionTime(prefix: "Training phase has been finished in") {
+          try measureExecitionTime(prefix: "Training phase has been finished", nDecimalPlaces: accuracy) {
             do {
               Context.local.learningPhase = .training
               try handleEvent(.trainingStart)
@@ -511,7 +515,7 @@ extension TrainingLoop {
           }
 
           // Validation phase
-          try measureExecitionTime(prefix: "Validation phase has been finished in") {
+          try measureExecitionTime(prefix: "Validation phase has been finished", nDecimalPlaces: accuracy) {
             do {
               Context.local.learningPhase = .inference
               try handleEvent(.validationStart)

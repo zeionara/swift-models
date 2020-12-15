@@ -16,6 +16,7 @@ import Datasets
 import TensorFlow
 import TrainingLoop
 import Logging
+import ArgumentParser
 
 public extension Array where Element == Double {
   public func average() -> Double {
@@ -62,99 +63,126 @@ where LogitsScalar: TensorFlowFloatingPoint, LabelsScalar: TensorFlowScalar, Lab
   return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), labels: Tensor<Int32>(labels))) 
 }
 
-func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> (TeacherModel, [Double]) {
-  
-  let dataset = MNIST(batchSize: batchSize, on: device)
-  
-  // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
-  var teacher = Sequential {
-    Conv2D<TeacherScalar>(filterShape: (5, 5, 1, 6), padding: .same, activation: relu)
-    AvgPool2D<TeacherScalar>(poolSize: (2, 2), strides: (2, 2))
-    Conv2D<TeacherScalar>(filterShape: (5, 5, 6, 16), activation: relu)
-    AvgPool2D<TeacherScalar>(poolSize: (2, 2), strides: (2, 2))
-    Flatten<TeacherScalar>()
-    Dense<TeacherScalar>(inputSize: 400, outputSize: 120, activation: relu)
-    Dense<TeacherScalar>(inputSize: 120, outputSize: 84, activation: relu)
-    Dense<TeacherScalar>(inputSize: 84, outputSize: 10)
+struct LeNetOptimizer: ParsableCommand {
+
+  @Option(name: .shortAndLong, default: 3, help: "Precision with which floating-point values will be printed")
+  var accuracy: Int
+
+  @Option(name: .shortAndLong, default: 1, help: "Number of epochs for models training")
+  var nEpochs: Int
+
+  @Option(name: .shortAndLong, default: 256, help: "How many images to precess at once")
+  var batchSize: Int
+
+  private func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> (TeacherModel, [Double]) {
+    
+    let dataset = MNIST(batchSize: batchSize, on: device)
+    
+    // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
+    var teacher = Sequential {
+      Conv2D<TeacherScalar>(filterShape: (5, 5, 1, 6), padding: .same, activation: gelu)
+      AvgPool2D<TeacherScalar>(poolSize: (2, 2), strides: (2, 2))
+      Conv2D<TeacherScalar>(filterShape: (5, 5, 6, 16), activation: gelu)
+      AvgPool2D<TeacherScalar>(poolSize: (2, 2), strides: (2, 2))
+      Flatten<TeacherScalar>()
+      Dense<TeacherScalar>(inputSize: 400, outputSize: 120, activation: gelu)
+      Dense<TeacherScalar>(inputSize: 120, outputSize: 84, activation: gelu)
+      Dense<TeacherScalar>(inputSize: 84, outputSize: 10)
+    }
+
+    var teacherOptimizer = SGD(for: teacher, learningRate: 0.1)
+
+    var trainingLoop = TrainingLoop<
+      MNIST<SystemRandomNumberGenerator>.Training, MNIST<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<TeacherModel>, TeacherScalar, TeacherScalar
+    >(
+      training: dataset.training,
+      validation: dataset.validation,
+      optimizer: teacherOptimizer,
+      lossFunction: computeSoftmaxCrossEntropyUsingLabels,
+      metrics: [.accuracy],
+      callbacks: [try! CSVLogger().log],
+      accuracy: accuracy
+    )
+
+    trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
+
+
+    let teacher_: TeacherModel? = Optional.none
+    let validationTimes = try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
+
+    return (teacher, validationTimes)
+
   }
 
-  var teacherOptimizer = SGD(for: teacher, learningRate: 0.1)
+  private func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> (StudentModel, [Double]) {
+    
+    let dataset = MNIST(batchSize: batchSize, on: device)
+    
+    // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
+    var model = Sequential {
+      Conv2D<StudentScalar>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu)
+      AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
+      Conv2D<StudentScalar>(filterShape: (5, 5, 3, 8), activation: relu)
+      AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
+      Flatten<StudentScalar>()
+      Dense<StudentScalar>(inputSize: 200, outputSize: 50, activation: relu)
+      // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
+      Dense<StudentScalar>(inputSize: 50, outputSize: 10)
+    }
 
-  var trainingLoop = TrainingLoop<
-    MNIST<SystemRandomNumberGenerator>.Training, MNIST<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<TeacherModel>, TeacherScalar, TeacherScalar
-  >(
-    training: dataset.training,
-    validation: dataset.validation,
-    optimizer: teacherOptimizer,
-    lossFunction: computeSoftmaxCrossEntropyUsingLabels,
-    metrics: [.accuracy],
-    callbacks: [try! CSVLogger().log]
-  )
+    var optimizer = SGD(for: model, learningRate: 0.1)
 
-  trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
+    var trainingLoop = TrainingLoop<
+      MNIST<SystemRandomNumberGenerator>.Training, MNIST<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<StudentModel>, TeacherScalar, StudentScalar
+    >(
+      training: dataset.training,
+      validation: dataset.validation,
+      optimizer: optimizer,
+      lossFunction: softmaxCrossEntropy,
+      metrics: [.accuracy],
+      callbacks: [try! CSVLogger().log],
+      accuracy: accuracy
+    )
 
+    trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
 
-  let teacher_: TeacherModel? = Optional.none
-  let validationTimes = try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
+    let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
 
-  return (teacher, validationTimes)
+    return (model, validationTimes)
 
-}
-
-func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> (StudentModel, [Double]) {
-  
-  let dataset = MNIST(batchSize: batchSize, on: device)
-  
-  // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
-  var model = Sequential {
-    Conv2D<StudentScalar>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu)
-    AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
-    Conv2D<StudentScalar>(filterShape: (5, 5, 3, 8), activation: relu)
-    AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
-    Flatten<StudentScalar>()
-    Dense<StudentScalar>(inputSize: 200, outputSize: 50, activation: relu)
-    // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
-    Dense<StudentScalar>(inputSize: 50, outputSize: 10)
   }
 
-  var optimizer = SGD(for: model, learningRate: 0.1)
+  mutating func run() throws {
+    var logger = Logger(label: "root")
+    logger.logLevel = .info
 
-  var trainingLoop = TrainingLoop<
-    MNIST<SystemRandomNumberGenerator>.Training, MNIST<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<StudentModel>, TeacherScalar, StudentScalar
-  >(
-    training: dataset.training,
-    validation: dataset.validation,
-    optimizer: optimizer,
-    lossFunction: softmaxCrossEntropy,
-    metrics: [.accuracy],
-    callbacks: [try! CSVLogger().log]
-  )
+    let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher") {
+      trainTeacher(nEpochs: nEpochs, batchSize: batchSize)
+    } log: { message, _ in
+      logger.notice("\(message)")
+    }
 
-  trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
+    logger.notice("Average teacher validation time: \(String(format: "%.\(accuracy)f", teacherValidationTimes.average())) seconds")
 
-  let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+    let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student") {
+      trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacher)
+    } log: { message, _ in
+      logger.notice("\(message)")
+    }
 
-  return (model, validationTimes)
+    let validationTimeDifference = teacherValidationTimes.average() / studentValidationTimes.average()
 
+    logger.notice("Average student validation time: \(String(format: "%.\(accuracy)f", studentValidationTimes.average())) seconds (\(String(format: "%.\(accuracy)f", validationTimeDifference)) times faster than teacher)")
+
+  }
 }
 
-var logger = Logger(label: "root")
-logger.logLevel = .info
-
-let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher in") {
-  trainTeacher(nEpochs: 1, batchSize: 256)
-} log: { message, _ in
-  logger.notice("\(message)")
+struct NNOptimizer: ParsableCommand {
+    static var configuration = CommandConfiguration(
+            abstract: "A tool for demonstrating approaches for neural networks optimization",
+            subcommands: [LeNetOptimizer.self], // TrainExternally.self
+            defaultSubcommand: LeNetOptimizer.self
+    )
 }
 
-logger.notice("Average teacher validation time: \(String(format: "%.\(3)f", teacherValidationTimes.average())) seconds")
-
-let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student in") {
-  trainStudent(nEpochs: 1, batchSize: 256, teacher: teacher)
-} log: { message, _ in
-  logger.notice("\(message)")
-}
-
-let validationTimeDifference = teacherValidationTimes.average() / studentValidationTimes.average()
-
-logger.notice("Average student validation time: \(String(format: "%.\(3)f", studentValidationTimes.average())) seconds (\(String(format: "%.\(3)f", validationTimeDifference)) times faster than teacher)")
+NNOptimizer.main()
