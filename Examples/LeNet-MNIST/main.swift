@@ -73,14 +73,14 @@ func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel)
   
   // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
   var model = Sequential {
-    Conv2D<Float>(filterShape: (5, 5, 1, 6), padding: .same, activation: relu)
+    Conv2D<Float>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu)
     AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
-    Conv2D<Float>(filterShape: (5, 5, 6, 16), activation: relu)
+    Conv2D<Float>(filterShape: (5, 5, 3, 8), activation: relu)
     AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
     Flatten<Float>()
-    Dense<Float>(inputSize: 400, outputSize: 120, activation: relu)
+    Dense<Float>(inputSize: 200, outputSize: 50, activation: relu)
     // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
-    Dense<Float>(inputSize: 120, outputSize: 10)
+    Dense<Float>(inputSize: 50, outputSize: 10)
   }
 
   var optimizer = SGD(for: model, learningRate: 0.1)
