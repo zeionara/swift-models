@@ -14,6 +14,8 @@
 
 import ModelSupport
 import TensorFlow
+import Logging
+import Foundation
 
 // Workaround https://bugs.swift.org/browse/TF-1122 that prevents us from registering a
 // loss function inside our TrainingLoop struct
@@ -30,7 +32,15 @@ where LogitsScalar: TensorFlowFloatingPoint, ProbabilitiesScalar: TensorFlowFloa
   return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), probabilities: Tensor<Float>(probabilities))) 
 }
 
+public func measureExecitionTime<ResultType>(prefix: String = "Executed", nDecimalPlaces: Int = 3, executeClosure: () throws -> ResultType, log: (String, Double) -> Void) throws -> ResultType {
+  let executionStartTimestamp = DispatchTime.now().uptimeNanoseconds
+  let result = try executeClosure()
+  let elapsedTime = Double(DispatchTime.now().uptimeNanoseconds - executionStartTimestamp) / 1e+9
+  log("\(prefix) in \(String(format: "%.\(nDecimalPlaces)f", elapsedTime)) seconds", elapsedTime)
+  return result
+}
 
+var logger = Logger(label: "training-loop")
 
 /// Types whose elements represent a training loop.
 ///
@@ -296,6 +306,7 @@ where
     callbacks: [TrainingLoopCallback<Self>] = [],
     includeDefaultCallbacks: Bool = true
   ) {
+    logger.logLevel = .info
     self.training = training
     self.validation = validation
     self.optimizer = optimizer
@@ -461,7 +472,7 @@ extension TrainingLoop {
       try $1.differentiableStep(model: $0, teacherLogits: $2)
     },
     teacher: TeachingModel? = Optional.none
-  ) throws where TeachingModel: Module { // TeachingModel.Input == Opt.Model.Input
+  ) throws -> [Double] where TeachingModel: Module { // TeachingModel.Input == Opt.Model.Input
     let callbacksCount = self.callbacks.count
     self.callbacks += callbacks
     defer { self.callbacks = Array(self.callbacks.prefix(callbacksCount)) }
@@ -469,6 +480,8 @@ extension TrainingLoop {
 
     model.move(to: device)
     optimizer = Opt(copying: optimizer, to: device)
+
+    var validationTimes = [Double]()
 
     do {
       try handleEvent(.fitStart)
@@ -480,32 +493,41 @@ extension TrainingLoop {
           try handleEvent(.epochStart)
 
           // Training phase
-          do {
-            Context.local.learningPhase = .training
-            try handleEvent(.trainingStart)
-            try multipleSteps(
-              on: batches,
-              step: {
-                try $0.trainingStep(model: &model, differentiableStep: differentiableStep, teacherLogits: $1)
-              },
-              teacher: teacher
-            )
-          } catch TrainingLoopAction.cancelTraining {}
-          try handleEvent(.trainingEnd)
+          try measureExecitionTime(prefix: "Training phase has been finished in") {
+            do {
+              Context.local.learningPhase = .training
+              try handleEvent(.trainingStart)
+              try multipleSteps(
+                on: batches,
+                step: {
+                  try $0.trainingStep(model: &model, differentiableStep: differentiableStep, teacherLogits: $1)
+                },
+                teacher: teacher
+              )
+            } catch TrainingLoopAction.cancelTraining {}
+            try handleEvent(.trainingEnd)
+          } log: { message, _ in
+            logger.notice("\(message)")
+          }
 
           // Validation phase
-          do {
-            Context.local.learningPhase = .inference
-            try handleEvent(.validationStart)
-            let teacher_: TeachingModel? = Optional.none
-            try multipleSteps(on: validation, step: { try $0.inferenceStep(model: model, teacherLogits: $1) }, teacher: teacher_)
-          } catch TrainingLoopAction.cancelValidation {}
-          try handleEvent(.validationEnd)
+          try measureExecitionTime(prefix: "Validation phase has been finished in") {
+            do {
+              Context.local.learningPhase = .inference
+              try handleEvent(.validationStart)
+              let teacher_: TeachingModel? = Optional.none
+              try multipleSteps(on: validation, step: { try $0.inferenceStep(model: model, teacherLogits: $1) }, teacher: teacher_)
+            } catch TrainingLoopAction.cancelValidation {}
+            try handleEvent(.validationEnd)
+          } log: { message, elapsedTime in
+            logger.notice("\(message)")
+            validationTimes.append(elapsedTime)
+          }
         } catch TrainingLoopAction.cancelEpoch {}
-
         try handleEvent(.epochEnd)
       }
     } catch TrainingLoopAction.cancelFit {}
     try handleEvent(.fitEnd)
+    return validationTimes
   }
 }

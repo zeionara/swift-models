@@ -21,12 +21,13 @@ let package = Package(
         .library(name: "FastStyleTransfer", targets: ["FastStyleTransfer"]),
         .library(name: "MiniGo", targets: ["MiniGo"]),
         .library(name: "TrainingLoop", targets: ["TrainingLoop"]),
-        .library(name: "SwiftModelsBenchmarksCore", targets: ["SwiftModelsBenchmarksCore"]),
+        .library(name: "SwiftModelsBenchmarksCore", targets: ["SwiftModelsBenchmarksCore"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.10.0"),
         .package(url: "https://github.com/apple/swift-argument-parser", .branch("main")),
         .package(url: "https://github.com/google/swift-benchmark", from: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-log.git", .branch("main"))
     ],
     targets: [
         .target(
@@ -81,7 +82,7 @@ let package = Package(
             path: "Examples/Shallow-Water-PDE"),
         .target(
             name: "LeNet-MNIST",
-            dependencies: ["Datasets", "ImageClassificationModels", "TrainingLoop"],
+            dependencies: ["Datasets", "ImageClassificationModels", "TrainingLoop", .product(name: "Logging", package: "swift-log")],
             path: "Examples/LeNet-MNIST"),
         .target(
             name: "MobileNetV1-Imagenette",

@@ -15,6 +15,13 @@
 import Datasets
 import TensorFlow
 import TrainingLoop
+import Logging
+
+public extension Array where Element == Double {
+  public func average() -> Double {
+    return self.reduce(0, +) / Double(self.count)
+  }
+}
 
 // let epochCount = 1
 // let batchSize = 256
@@ -55,7 +62,7 @@ where LogitsScalar: TensorFlowFloatingPoint, LabelsScalar: TensorFlowScalar, Lab
   return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), labels: Tensor<Int32>(labels))) 
 }
 
-func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> TeacherModel {
+func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> (TeacherModel, [Double]) {
   
   let dataset = MNIST(batchSize: batchSize, on: device)
   
@@ -88,13 +95,13 @@ func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> TeacherModel {
 
 
   let teacher_: TeacherModel? = Optional.none
-  try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
+  let validationTimes = try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
 
-  return teacher
+  return (teacher, validationTimes)
 
 }
 
-func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> StudentModel {
+func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> (StudentModel, [Double]) {
   
   let dataset = MNIST(batchSize: batchSize, on: device)
   
@@ -125,11 +132,29 @@ func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel)
 
   trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
 
-  try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+  let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
 
-  return model
+  return (model, validationTimes)
 
 }
 
-let teacher = trainTeacher(nEpochs: 1, batchSize: 256)
-let student = trainStudent(nEpochs: 1, batchSize: 256, teacher: teacher)
+var logger = Logger(label: "root")
+logger.logLevel = .info
+
+let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher in") {
+  trainTeacher(nEpochs: 1, batchSize: 256)
+} log: { message, _ in
+  logger.notice("\(message)")
+}
+
+logger.notice("Average teacher validation time: \(String(format: "%.\(3)f", teacherValidationTimes.average())) seconds")
+
+let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student in") {
+  trainStudent(nEpochs: 1, batchSize: 256, teacher: teacher)
+} log: { message, _ in
+  logger.notice("\(message)")
+}
+
+let validationTimeDifference = teacherValidationTimes.average() / studentValidationTimes.average()
+
+logger.notice("Average student validation time: \(String(format: "%.\(3)f", studentValidationTimes.average())) seconds (\(String(format: "%.\(3)f", validationTimeDifference)) times faster than teacher)")
