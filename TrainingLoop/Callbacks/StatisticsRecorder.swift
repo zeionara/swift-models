@@ -84,7 +84,7 @@ public class StatisticsRecorder {
       let epochIndex = loop.epochIndex,
       let epochCount = loop.epochCount,
       let loss = loop.lastStepLoss,
-      let output = loop.lastStepOutput,
+      let output = loop.lastStepOutput as? Tensor<L.StudentScalar>,
       let target = loop.lastStepTarget
     else {
       return
@@ -113,9 +113,9 @@ public class StatisticsRecorder {
 
   /// Lets each of the metricMeasurers accumulate data from
   /// `loss`, `predictions`, `labels`.
-  func accumulateMetrics<Output, Target>(loss: Tensor<Float>, predictions: Output, labels: Target) {
+  func accumulateMetrics<OutputScalar, Target>(loss: Tensor<Float>, predictions: Tensor<OutputScalar>, labels: Target) where OutputScalar: TensorFlowFloatingPoint {
     for index in metricMeasurers.indices {
-      metricMeasurers[index].accumulate(loss: loss, predictions: predictions, labels: labels)
+      metricMeasurers[index].accumulate(loss: loss, predictions: Tensor<Float>(predictions), labels: labels)
     }
   }
 

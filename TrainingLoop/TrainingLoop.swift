@@ -25,6 +25,13 @@ public final class LossFunctionWrapper<Output: Differentiable, Target> {
   init(_ f: @escaping F, _ s: @escaping S) { self.f = f; self.s = s }
 }
 
+public func computeSoftmaxCrossEntropy<LogitsScalar, ProbabilitiesScalar, ResultScalar>(_ logits: Tensor<LogitsScalar>, _ probabilities: Tensor<ProbabilitiesScalar>) -> Tensor<ResultScalar>
+where LogitsScalar: TensorFlowFloatingPoint, ProbabilitiesScalar: TensorFlowFloatingPoint, ResultScalar: TensorFlowFloatingPoint {
+  return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), probabilities: Tensor<Float>(probabilities))) 
+}
+
+
+
 /// Types whose elements represent a training loop.
 ///
 /// - Note: This protocol is mainly there to give us an easy type for a generic `TrainingLoop`
@@ -34,17 +41,20 @@ public protocol TrainingLoopProtocol {
   /// The type of the sequence of epochs for the training data.
   associatedtype Training
   where
-    Training: Sequence, Training.Element: Collection,
-    Training.Element.Element == LabeledData<Opt.Model.Input, Target>
+    Training: Sequence, Training.Element: Collection
+    // Training.Element.Element == LabeledData<Opt.Model.Input, Target>
 
   /// The type of the collection of batches for the validation data.
   associatedtype Validation
   where
-    Validation: Collection,
-    Validation.Element == LabeledData<Opt.Model.Input, Target>
+    Validation: Collection
+    // Validation.Element == LabeledData<Opt.Model.Input, Target>
 
   /// The type of the teacher Model
   // associatedtype TeachingModel
+
+  associatedtype TeacherScalar: TensorFlowFloatingPoint
+  associatedtype StudentScalar: TensorFlowFloatingPoint
 
   /// The type of the target of our model.
   associatedtype Target
@@ -183,11 +193,12 @@ public typealias TrainingLoopCallback<L: TrainingLoopProtocol> = (
 /// - Parameter `Target`: the type of the target.
 /// - Parameter `Opt`: the type of the optimizer used.
 public struct TrainingLoop<
-  Training: Sequence, Validation: Collection, Target, Opt: Optimizer
+  Training: Sequence, Validation: Collection, Target, Opt: Optimizer, TeacherScalar, StudentScalar
 >: TrainingLoopProtocol
 where
-  Training.Element: Collection, Training.Element.Element == LabeledData<Opt.Model.Input, Target>,
-  Validation.Element == LabeledData<Opt.Model.Input, Target>, Opt.Model: Module
+  Training.Element: Collection, // Training.Element.Element == LabeledData<Opt.Model.Input, Target>,
+  Opt.Model: Module, // Validation.Element == LabeledData<Opt.Model.Input, Target>, 
+  TeacherScalar: TensorFlowFloatingPoint, StudentScalar: TensorFlowFloatingPoint
 {
   // Typealiases
   /// The type of the model.
@@ -289,7 +300,11 @@ where
     self.validation = validation
     self.optimizer = optimizer
     self.lossFunction = LossFunction(lossFunction) { output, target in
-      softmaxCrossEntropy(logits: (output as! Tensor<Float>), probabilities: (target as! Tensor<Float>))
+      // print("Computing cv...")
+      computeSoftmaxCrossEntropy((output as! Tensor<StudentScalar>), (target as! Tensor<StudentScalar>))
+      // print("Computed cv...")
+      // return result
+      // softmaxCrossEntropy(logits: (output as! Tensor<Float>), probabilities: (target as! Tensor<Float>))
     }
     self.metrics = metrics
 
@@ -332,7 +347,9 @@ extension TrainingLoop {
       // print(softmax(predictions as! Tensor<Float>))
       // return lossFunction.s(predictions, (fixedTarget as! Output))
       if let logits = teacherLogits {
+        // print("Computing cv...")
         return lossFunction.s(predictions, logits)
+        // print("Computed cv...")
       } else {
         return lossFunction.f(predictions, target) // lossFunction.s(predictions, (fixedTarget as! Output))        
       }
@@ -395,14 +412,28 @@ extension TrainingLoop {
   /// Performs `step` on each of `batches`.
   mutating private func multipleSteps<Batches: Collection, TeachingModel>(
     on batches: Batches, step: (inout Self, Output?) throws -> Void, teacher: TeachingModel? = Optional.none
-  ) throws where Batches.Element == Batch, TeachingModel: Module, TeachingModel.Input == Opt.Model.Input {
+  ) throws where TeachingModel: Module { // Batches.Element == Batch, TeachingModel.Input == Opt.Model.Input
     batchCount = batches.count
     for (i, batch) in batches.enumerated() {
       batchIndex = i
-      (lastStepInput, lastStepTarget) = (batch.data, batch.label)
+      let fixedBatch = LabeledData<Tensor<StudentScalar>, Tensor<Int32>>(
+        data: Tensor<StudentScalar>(
+          (batch as! LabeledData<Tensor<Float>, Tensor<Int32>>).data
+        ),
+        label: (batch as! LabeledData<Tensor<Float>, Tensor<Int32>>).label
+      )
+      (lastStepInput, lastStepTarget) = ((fixedBatch as! Batch).data, (fixedBatch as! Batch).label)
       var teacherLogits: Output? = Optional.none
       if let unwrappedTeacher = teacher {
-        teacherLogits = (softmax(unwrappedTeacher(lastStepInput!) as! Tensor<Float>) as! Output)
+        teacherLogits = (
+          Tensor<StudentScalar>(
+            softmax(
+              unwrappedTeacher(
+                Tensor<TeacherScalar>(lastStepInput! as! Tensor<StudentScalar>) as! TeachingModel.Input
+              ) as! Tensor<TeacherScalar>
+            )
+          ) as! Output
+        )
       }
       // print(batch.label)
       do {
@@ -430,7 +461,7 @@ extension TrainingLoop {
       try $1.differentiableStep(model: $0, teacherLogits: $2)
     },
     teacher: TeachingModel? = Optional.none
-  ) throws where TeachingModel: Module, TeachingModel.Input == Opt.Model.Input{
+  ) throws where TeachingModel: Module { // TeachingModel.Input == Opt.Model.Input
     let callbacksCount = self.callbacks.count
     self.callbacks += callbacks
     defer { self.callbacks = Array(self.callbacks.prefix(callbacksCount)) }
