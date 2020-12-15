@@ -19,8 +19,10 @@ import TensorFlow
 // loss function inside our TrainingLoop struct
 public final class LossFunctionWrapper<Output: Differentiable, Target> {
   public typealias F = @differentiable(Output, @noDerivative Target) -> Tensor<Float>
+  public typealias S = @differentiable(Output, @noDerivative Output) -> Tensor<Float>
   public var f: F
-  init(_ f: @escaping F) { self.f = f }
+  public var s: S
+  init(_ f: @escaping F, _ s: @escaping S) { self.f = f; self.s = s }
 }
 
 /// Types whose elements represent a training loop.
@@ -283,7 +285,9 @@ where
     self.training = training
     self.validation = validation
     self.optimizer = optimizer
-    self.lossFunction = LossFunction(lossFunction)
+    self.lossFunction = LossFunction(lossFunction) { output, target in
+      softmaxCrossEntropy(logits: (output as! Tensor<Float>), probabilities: (target as! Tensor<Float>))
+    }
     self.metrics = metrics
 
     if includeDefaultCallbacks {
@@ -306,11 +310,23 @@ extension TrainingLoop {
   public mutating func differentiableStep(model: Model) throws {
     guard let data = lastStepInput else { return }
     guard let target = lastStepTarget else { return }
+    let targetDevice = (target as! Tensor<Int32>).device
+    let fixedTarget = Tensor(
+      (target as! Tensor<Int32>).unstacked().map{target_label in
+        Tensor<Float>(
+          (0..<10).map{$0 == target_label.scalar! ? 1.0 : 0.0},
+          on: targetDevice
+        )
+      }
+    )
     (lastStepLoss, lastStepGradient) = valueWithGradient(at: model) {
       (model: Model) -> Tensor<Float> in
       let predictions = model(data)
       lastStepOutput = predictions
-      return lossFunction.f(predictions, target)
+      // print((predictions as! Tensor<Float>).shape)
+      // print((target as! Tensor<Int32>).shape)
+      // print(fixedTarget)
+      return lossFunction.s(predictions, (fixedTarget as! Output))// lossFunction.f(predictions, target)
     }
   }
 

@@ -4,7 +4,7 @@
         {
             "label": "swift-build",
             "type": "shell",
-            "command": "swift build --product BERT-Russian",
+            "command": "swift build --product LeNet-MNIST",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

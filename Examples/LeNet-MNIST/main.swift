@@ -16,8 +16,8 @@ import Datasets
 import TensorFlow
 import TrainingLoop
 
-let epochCount = 12
-let batchSize = 128
+let epochCount = 1
+let batchSize = 256
 
 // Until https://github.com/tensorflow/swift-apis/issues/993 is fixed, default to the eager-mode
 // device on macOS instead of X10.
