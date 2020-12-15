@@ -43,6 +43,9 @@ public protocol TrainingLoopProtocol {
     Validation: Collection,
     Validation.Element == LabeledData<Opt.Model.Input, Target>
 
+  /// The type of the teacher Model
+  // associatedtype TeachingModel
+
   /// The type of the target of our model.
   associatedtype Target
 
@@ -307,18 +310,18 @@ where
 
 extension TrainingLoop {
   /// The default differentiable step.
-  public mutating func differentiableStep(model: Model) throws {
+  public mutating func differentiableStep(model: Model, teacherLogits: Output? = Optional.none) throws {
     guard let data = lastStepInput else { return }
     guard let target = lastStepTarget else { return }
-    let targetDevice = (target as! Tensor<Int32>).device
-    let fixedTarget = Tensor(
-      (target as! Tensor<Int32>).unstacked().map{target_label in
-        Tensor<Float>(
-          (0..<10).map{$0 == target_label.scalar! ? 1.0 : 0.0},
-          on: targetDevice
-        )
-      }
-    )
+    // let targetDevice = (target as! Tensor<Int32>).device
+    // let fixedTarget = Tensor(
+    //   (target as! Tensor<Int32>).unstacked().map{target_label in
+    //     Tensor<Float>(
+    //       (0..<10).map{$0 == target_label.scalar! ? 1.0 : 0.0},
+    //       on: targetDevice
+    //     )
+    //   }
+    // )
     (lastStepLoss, lastStepGradient) = valueWithGradient(at: model) {
       (model: Model) -> Tensor<Float> in
       let predictions = model(data)
@@ -326,24 +329,34 @@ extension TrainingLoop {
       // print((predictions as! Tensor<Float>).shape)
       // print((target as! Tensor<Int32>).shape)
       // print(fixedTarget)
-      return lossFunction.s(predictions, (fixedTarget as! Output))// lossFunction.f(predictions, target)
+      // print(softmax(predictions as! Tensor<Float>))
+      // return lossFunction.s(predictions, (fixedTarget as! Output))
+      if let logits = teacherLogits {
+        return lossFunction.s(predictions, logits)
+      } else {
+        return lossFunction.f(predictions, target) // lossFunction.s(predictions, (fixedTarget as! Output))        
+      }
     }
   }
 
   /// The step used for inference.
-  public mutating func inferenceStep(model: Model) throws {
+  public mutating func inferenceStep(model: Model, teacherLogits: Output? = Optional.none) throws {
     guard let data = lastStepInput else { return }
     lastStepOutput = model(data)
     guard let target = lastStepTarget else { return }
     try handleEvent(.inferencePredictionEnd)
-    lastStepLoss = lossFunction.f(lastStepOutput!, target)
+    if let logits = teacherLogits {
+      lastStepLoss = lossFunction.s(lastStepOutput!, logits)
+    } else {
+      lastStepLoss = lossFunction.f(lastStepOutput!, target)
+    }
   }
 
   /// The step used for training.
   public mutating func trainingStep(
-    model: inout Model, differentiableStep: (Model, inout Self) throws -> Void
+    model: inout Model, differentiableStep: (Model, inout Self, Output?) throws -> Void, teacherLogits: Output? = Optional.none
   ) throws {
-    try differentiableStep(model, &self)
+    try differentiableStep(model, &self, teacherLogits)
     try handleEvent(.updateStart)
     optimizer.update(&model, along: lastStepGradient!)
   }
@@ -380,16 +393,21 @@ extension TrainingLoop {
 
 extension TrainingLoop {
   /// Performs `step` on each of `batches`.
-  mutating private func multipleSteps<Batches: Collection>(
-    on batches: Batches, step: (inout Self) throws -> Void
-  ) throws where Batches.Element == Batch {
+  mutating private func multipleSteps<Batches: Collection, TeachingModel>(
+    on batches: Batches, step: (inout Self, Output?) throws -> Void, teacher: TeachingModel? = Optional.none
+  ) throws where Batches.Element == Batch, TeachingModel: Module, TeachingModel.Input == Opt.Model.Input {
     batchCount = batches.count
     for (i, batch) in batches.enumerated() {
       batchIndex = i
       (lastStepInput, lastStepTarget) = (batch.data, batch.label)
+      var teacherLogits: Output? = Optional.none
+      if let unwrappedTeacher = teacher {
+        teacherLogits = (softmax(unwrappedTeacher(lastStepInput!) as! Tensor<Float>) as! Output)
+      }
+      // print(batch.label)
       do {
         try handleEvent(.batchStart)
-        try step(&self)
+        try step(&self, teacherLogits)
       } catch TrainingLoopAction.cancelBatch {}
       try handleEvent(.batchEnd)
       LazyTensorBarrier()
@@ -405,13 +423,14 @@ extension TrainingLoop {
   ///     uses the `inferenceStep` method of `TrainingLoop`.
   ///   - trainingStep: The step used during the training phase of each epoch. The default value
   ///     uses the `trainingStep` method of `TrainingLoop`.
-  public mutating func fit(
+  public mutating func fit<TeachingModel>(
     _ model: inout Model, epochs: Int, callbacks: [TrainingLoopCallback<Self>] = [],
     on device: Device = Device.default,
-    differentiableStep: (Model, inout Self) throws -> Void = {
-      try $1.differentiableStep(model: $0)
-    }
-  ) throws {
+    differentiableStep: (Model, inout Self, Output?) throws -> Void = {
+      try $1.differentiableStep(model: $0, teacherLogits: $2)
+    },
+    teacher: TeachingModel? = Optional.none
+  ) throws where TeachingModel: Module, TeachingModel.Input == Opt.Model.Input{
     let callbacksCount = self.callbacks.count
     self.callbacks += callbacks
     defer { self.callbacks = Array(self.callbacks.prefix(callbacksCount)) }
@@ -436,8 +455,10 @@ extension TrainingLoop {
             try multipleSteps(
               on: batches,
               step: {
-                try $0.trainingStep(model: &model, differentiableStep: differentiableStep)
-              })
+                try $0.trainingStep(model: &model, differentiableStep: differentiableStep, teacherLogits: $1)
+              },
+              teacher: teacher
+            )
           } catch TrainingLoopAction.cancelTraining {}
           try handleEvent(.trainingEnd)
 
@@ -445,7 +466,8 @@ extension TrainingLoop {
           do {
             Context.local.learningPhase = .inference
             try handleEvent(.validationStart)
-            try multipleSteps(on: validation, step: { try $0.inferenceStep(model: model) })
+            let teacher_: TeachingModel? = Optional.none
+            try multipleSteps(on: validation, step: { try $0.inferenceStep(model: model, teacherLogits: $1) }, teacher: teacher_)
           } catch TrainingLoopAction.cancelValidation {}
           try handleEvent(.validationEnd)
         } catch TrainingLoopAction.cancelEpoch {}

@@ -16,8 +16,8 @@ import Datasets
 import TensorFlow
 import TrainingLoop
 
-let epochCount = 1
-let batchSize = 256
+// let epochCount = 1
+// let batchSize = 256
 
 // Until https://github.com/tensorflow/swift-apis/issues/993 is fixed, default to the eager-mode
 // device on macOS instead of X10.
@@ -27,30 +27,80 @@ let batchSize = 256
   let device = Device.defaultXLA
 #endif
 
-let dataset = MNIST(batchSize: batchSize, on: device)
+typealias TeacherModel = Sequential<Conv2D<Float>, Sequential<AvgPool2D<Float>, Sequential<Conv2D<Float>, Sequential<AvgPool2D<Float>, Sequential<Flatten<Float>, Sequential<Dense<Float>, Sequential<Dense<Float>, Dense<Float>>>>>>>>
+typealias StudentModel = Sequential<Conv2D<Float>, Sequential<AvgPool2D<Float>, Sequential<Conv2D<Float>, Sequential<AvgPool2D<Float>, Sequential<Flatten<Float>, Sequential<Dense<Float>, Dense<Float>>>>>>>
 
-// The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
-var classifier = Sequential {
-  Conv2D<Float>(filterShape: (5, 5, 1, 6), padding: .same, activation: relu)
-  AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
-  Conv2D<Float>(filterShape: (5, 5, 6, 16), activation: relu)
-  AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
-  Flatten<Float>()
-  Dense<Float>(inputSize: 400, outputSize: 120, activation: relu)
-  Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
-  Dense<Float>(inputSize: 84, outputSize: 10)
+func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> TeacherModel {
+  
+  let dataset = MNIST(batchSize: batchSize, on: device)
+  
+  // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
+  var teacher = Sequential {
+    Conv2D<Float>(filterShape: (5, 5, 1, 6), padding: .same, activation: relu)
+    AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
+    Conv2D<Float>(filterShape: (5, 5, 6, 16), activation: relu)
+    AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
+    Flatten<Float>()
+    Dense<Float>(inputSize: 400, outputSize: 120, activation: relu)
+    Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
+    Dense<Float>(inputSize: 84, outputSize: 10)
+  }
+
+  var teacherOptimizer = SGD(for: teacher, learningRate: 0.1)
+
+  var trainingLoop = TrainingLoop(
+    training: dataset.training,
+    validation: dataset.validation,
+    optimizer: teacherOptimizer,
+    lossFunction: softmaxCrossEntropy,
+    metrics: [.accuracy],
+    callbacks: [try! CSVLogger().log]
+  )
+
+  trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
+
+
+  let teacher_: TeacherModel? = Optional.none
+  try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
+
+  return teacher
+
 }
 
-var optimizer = SGD(for: classifier, learningRate: 0.1)
+func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> StudentModel {
+  
+  let dataset = MNIST(batchSize: batchSize, on: device)
+  
+  // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
+  var model = Sequential {
+    Conv2D<Float>(filterShape: (5, 5, 1, 6), padding: .same, activation: relu)
+    AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
+    Conv2D<Float>(filterShape: (5, 5, 6, 16), activation: relu)
+    AvgPool2D<Float>(poolSize: (2, 2), strides: (2, 2))
+    Flatten<Float>()
+    Dense<Float>(inputSize: 400, outputSize: 120, activation: relu)
+    // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
+    Dense<Float>(inputSize: 120, outputSize: 10)
+  }
 
-var trainingLoop = TrainingLoop(
-  training: dataset.training,
-  validation: dataset.validation,
-  optimizer: optimizer,
-  lossFunction: softmaxCrossEntropy,
-  metrics: [.accuracy],
-  callbacks: [try! CSVLogger().log])
+  var optimizer = SGD(for: model, learningRate: 0.1)
 
-trainingLoop.statisticsRecorder!.setReportTrigger(.endOfEpoch)
+  var trainingLoop = TrainingLoop(
+    training: dataset.training,
+    validation: dataset.validation,
+    optimizer: optimizer,
+    lossFunction: softmaxCrossEntropy,
+    metrics: [.accuracy],
+    callbacks: [try! CSVLogger().log]
+  )
 
-try! trainingLoop.fit(&classifier, epochs: epochCount, on: device)
+  trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
+
+  try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+
+  return model
+
+}
+
+let teacher = trainTeacher(nEpochs: 1, batchSize: 256)
+let student = trainStudent(nEpochs: 1, batchSize: 256, teacher: teacher)
