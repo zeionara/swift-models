@@ -10,6 +10,16 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "swift-build-elmo",
+            "type": "shell",
+            "command": "swift build --product ELMO-Russian",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }
