@@ -55,7 +55,7 @@ try generateVocabulary(corpusName: "baneks")
 //let nMaskedTokensPerSequence = 5
 let stringSentences = try String(contentsOf: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/sentences.txt")).components(separatedBy: "\n")
 let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/vocabulary.txt"), bert: false)
-var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: 100, hiddenSize: 50)
+var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: 10)//, hiddenSize: 50)
 let text = ["твой анек", "больше лайков", "вчера говорили"]
 let preprocessedText = model.preprocess(sequences: stringSentences)
 //print(preprocessedText)
@@ -84,7 +84,7 @@ print(kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10,
 //        )
 //)
 
-var optimizer = Adam(for: model, learningRate: 0.001)
+var optimizer = Adam(for: model, learningRate: 0.05)
 
 //var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
 //        for: languageModel,
@@ -94,13 +94,14 @@ var optimizer = Adam(for: model, learningRate: 0.001)
 //        )
 //)
 
-let sequences = ["твой анек", "больше лайков", "вчера говорили", "вы же", "же вчера"] // ["Купил мужик", "она анекдот", "как раз"]
+let sequences = ["a b", "c d", "e f", "a f"] // ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"]
 
-for epochIndex in 0..<1000 {
+for epochIndex in 0..<1001 {
 
     let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
         let probs = model(preprocessedText)
-        let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
+        let res = softmaxCrossEntropy(logits: probs, probabilities: labels)
+        // let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
         return res
     }
 

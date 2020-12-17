@@ -60,7 +60,7 @@ public struct BiLSTM: Layer {
         let concatenatedResult = Tensor<Scalar>(
                 concatenating: [
                     result[0].hidden.transposed(permutation: [1, 0]),
-                    resultBackward[0].hidden.transposed(permutation: [1, 0]).reversed(inAxes: [0])
+                    resultBackward[0].hidden.transposed(permutation: [1, 0])
                 ]
         ).transposed(permutation: [1, 0])
 
@@ -88,26 +88,27 @@ public struct ELMO: Module {
     @noDerivative public let initializerStandardDeviation: Scalar
 
     public var tokenEmbeddings: Embedding<Scalar>
-    public var recurrentCells: Sequential<BiLSTM, BiLSTM>
+    public var firstRecurrentCell: BiLSTM
+    public var secondRecurrentCell: BiLSTM
     public var dense: Dense<Scalar>
 
     public init(
             vocabulary: Vocabulary,
             tokenizer: Tokenizer,
             embeddingSize: Int,
-            initializerStandardDeviation: Scalar = 0.02,
-            hiddenSize: Int
+            initializerStandardDeviation: Scalar = 0.02 // ,
+            // hiddenSize: Int
     ) {
         self.vocabulary = vocabulary
         self.embeddingSize = embeddingSize
         self.tokenizer = tokenizer
         self.initializerStandardDeviation = initializerStandardDeviation
-        self.hiddenSize = hiddenSize
+        self.hiddenSize = embeddingSize / 2 // hiddenSize
 
-        recurrentCells = Sequential {
-            BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize)
-            BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize)
-        }
+        // recurrentCells = Sequential {
+        firstRecurrentCell = BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize)
+        secondRecurrentCell = BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize)
+        // }
         
         dense = Dense<Scalar>(inputSize: hiddenSize * 2, outputSize: vocabulary.count, activation: softmax)
 
@@ -170,19 +171,43 @@ public struct ELMO: Module {
         
         // 2. Pass embeddings through the recurrent cells
         
-        let concatenatedResult = recurrentCells(tokenEmbeddings)
+        let firstCellConcatenatedResult = firstRecurrentCell(tokenEmbeddings) + tokenEmbeddings // Tensor(stacking: [tokenEmbeddings, tokenEmbeddings], alongAxis: 1).reshaped(to: [-1, embeddingSize])
+        let secondCellConcatenatedResult = secondRecurrentCell(firstCellConcatenatedResult)
 
         // 4. Convert results to next word probabilities
-        let probs = dense(concatenatedResult)
+        // print("probs shape")
+        // print(Tensor(
+        //             stacking: [
+        //                 tokenEmbeddings,
+        //                 firstCellConcatenatedResult,
+        //                 secondCellConcatenatedResult
+        //             ]
+        //         ).mean(alongAxes: [0]).reshaped(to: [-1, embeddingSize]).shape)
+        let probs = softmax(
+            dense(
+                Tensor(
+                    stacking: [
+                        tokenEmbeddings,
+                        firstCellConcatenatedResult,
+                        secondCellConcatenatedResult
+                    ]
+                ).mean(alongAxes: [0]).reshaped(to: [-1, embeddingSize])
+            )
+        )
         return probs
     }
 
-    public func test(_ sequences: [String]) { 
+    public func test(_ sequences: [String]) {
+        var logEntries = [(Float, String)]()
         for sequencePair in makeSequencePairs(sequences) {
             let nSequences = sequencePair.count
-            let embs = tokenEmbeddings(
-                preprocess(sequences: sequencePair)
-            ).reshaped(to: [nSequences, -1, embeddingSize]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
+            let embs = firstRecurrentCell(
+                tokenEmbeddings(
+                    preprocess(
+                        sequences: sequencePair
+                    )
+                )
+            ).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
 
             let vectors = embs.unstacked()
             // let similarity = cosineDistance(
@@ -190,8 +215,13 @@ public struct ELMO: Module {
             //     vectors[1]
             // )
             let similarity = (vectors[0] * vectors[1]).sum() / (sqrt((vectors[0] * vectors[0]).sum()) * sqrt((vectors[1] * vectors[1]).sum()))
+            // let similarity = cosineDistance(vectors[0], vectors[1])
 
-            print("Similarity of phrases '\(sequencePair[0])' and '\(sequencePair[1])' is \(String(format: "%.3f", similarity.scalar!))")
+            logEntries.append((similarity.scalar!, "Similarity of phrases '\(sequencePair[0])' and '\(sequencePair[1])' is \(String(format: "%.3f", similarity.scalar!))"))
+        }
+
+        for (similarity, logEntry) in logEntries.sorted{$0.0 > $1.0} {
+            print(logEntry)
         }
     }
 
