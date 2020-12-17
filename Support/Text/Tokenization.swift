@@ -40,6 +40,7 @@ public func createAttentionMask(forTextBatch text: TextBatch) -> Tensor<Float> {
 public struct Vocabulary {
     internal let tokensToIds: [String: Int]
     internal let idsToTokens: [Int: String]
+    public var path: URL? = Optional.none
 
     public var count: Int {
         tokensToIds.count
@@ -47,6 +48,9 @@ public struct Vocabulary {
 
     public init(tokensToIds: [String: Int]) {
         self.tokensToIds = tokensToIds
+        // for (token, id) in tokensToIds {
+        //     print(token, id)
+        // }
         self.idsToTokens = [Int: String](uniqueKeysWithValues: tokensToIds.map {
             ($1, $0)
         })
@@ -94,7 +98,7 @@ extension Vocabulary {
                             $0.count > 0
                         }
                         .enumerated().map {
-                            ($0.element, $0.offset + (bert ? 4 : 0))
+                            ($0.element, $0.offset + (bert ? 4 : 1))
                         },
                 uniquingKeysWith: { (v1, v2) in max(v1, v2) }
         )
@@ -108,6 +112,7 @@ extension Vocabulary {
             }
         }
         self.init(tokensToIds: tokenToIds)
+        path = fileURL
     }
 
     public func save(toFile fileURL: URL) throws {

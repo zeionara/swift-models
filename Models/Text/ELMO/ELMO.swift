@@ -19,6 +19,24 @@ import ModelSupport
 import SwiftProtobuf
 import TensorFlow
 
+// public extension LSTMCell {
+//     public init(forgetBias: Tensor<Scalar>) {
+//         self.forgetBias = forgetBias
+//     }
+// }
+
+func makeSequencePairs(_ sequences: [String]) -> [[String]] {
+    var pairs = [[String]]()
+    for i in 0..<sequences.count {
+        for j in (i + 1)..<sequences.count {
+            pairs.append(
+                [sequences[i], sequences[j]]
+            )
+        }
+    }
+    return pairs
+}
+
 public struct BiLSTM: Layer {
     public typealias Scalar = Float
 
@@ -48,7 +66,16 @@ public struct BiLSTM: Layer {
 
         return concatenatedResult
     }
+
+    // public var tensor: Tensor<Scalar> {
+    //     forwardLSTM.cell.forgetBias = forwardLSTM.cell.forgetBias
+    //     return forwardLSTM.cell.forgetBias
+    // }
 }
+
+let DENSE_LAYER_KEY = "dense"
+let FIRST_BILSTM_CELL_KEY = "first-bilstm"
+
 
 public struct ELMO: Module {
     // TODO: Convert to a generic constraint once TF-427 is resolved.
@@ -93,6 +120,29 @@ public struct ELMO: Module {
         )
     }
 
+    // public init(_ path: URL, _ modelName: String) {
+    //     self.vocabulary = try Vocabulary(fromFile: path.appendingPathComponent("\(modelName).txt"), bert: false)
+    //     self.embeddingSize = embeddingSize
+    //     self.tokenizer = BERTTokenizer(vocabulary: vocabulary)
+    //     self.initializerStandardDeviation = initializerStandardDeviation
+    //     self.hiddenSize = hiddenSize
+
+    //     recurrentCells = Sequential {
+    //         BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize)
+    //         BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize)
+    //     }
+        
+    //     dense = Dense<Scalar>(inputSize: hiddenSize * 2, outputSize: vocabulary.count, activation: softmax)
+
+    //     tokenEmbeddings = Embedding<Scalar>(
+    //             vocabularySize: vocabulary.count,
+    //             embeddingSize: embeddingSize,
+    //             embeddingsInitializer: truncatedNormalInitializer(
+    //                     standardDeviation: Tensor<Scalar>(initializerStandardDeviation)
+    //             )
+    //     )
+    // }
+
     // Obtains tokens' indices in the vocabulary
     public func preprocess(sequences: [String]) -> Tensor<Int32> {
         var sequences = sequences.map(tokenizer.tokenize)
@@ -126,4 +176,37 @@ public struct ELMO: Module {
         let probs = dense(concatenatedResult)
         return probs
     }
+
+    public func test(_ sequences: [String]) { 
+        for sequencePair in makeSequencePairs(sequences) {
+            let nSequences = sequencePair.count
+            let embs = tokenEmbeddings(
+                preprocess(sequences: sequencePair)
+            ).reshaped(to: [nSequences, -1, embeddingSize]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
+
+            let vectors = embs.unstacked()
+            let similarity = cosineSimilarity(
+                vectors[0],
+                vectors[1]
+            )
+
+            print("Similarity of phrases '\(sequencePair[0])' and '\(sequencePair[1])' is \(String(format: "%.3f", similarity.scalar!))")
+        }
+    }
+
+    // public func save(_ path: URL, modelName: String = "elmo") throws {
+    //     try FileManager.default.copyItem(at: vocabulary.path!, to: path.appendingPathComponent("\(modelName).vocabulary"))
+
+    //     print(recurrentCells.layer1.tensor.shape)
+
+    //     try CheckpointWriter(
+    //         tensors: [
+    //             DENSE_LAYER_KEY: dense.weight,
+    //             FIRST_BILSTM_CELL_KEY: recurrentCells.layer1.tensor
+    //         ]
+    //     ).write(
+    //         to: path,
+    //         name: modelName
+    //     )
+    // }
 }

@@ -47,7 +47,7 @@ func generateVocabulary(corpusName: String) throws {
     let stringSentences = try String(contentsOf: corpusFilePath)
 
     let tokens = specialTokens + tokenizer.tokenize(stringSentences)
-    try tokens.joined(separator: "\n").write(to: vocabularyFilePath, atomically: false, encoding: .utf8)
+    try Set(tokens).joined(separator: "\n").write(to: vocabularyFilePath, atomically: false, encoding: .utf8)
 }
 
 try generateVocabulary(corpusName: "baneks")
@@ -56,7 +56,7 @@ try generateVocabulary(corpusName: "baneks")
 let stringSentences = try String(contentsOf: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/sentences.txt")).components(separatedBy: "\n")
 let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/baneks/vocabulary.txt"), bert: false)
 var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: 20, hiddenSize: 10)
-let text = ["один два", "два"]
+let text = ["твой анек", "больше лайков", "вчера говорили"]
 let preprocessedText = model.preprocess(sequences: stringSentences)
 //print(preprocessedText)
 let probs = model(preprocessedText)
@@ -84,7 +84,7 @@ print(kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10,
 //        )
 //)
 
-var optimizer = SGD(for: model)
+var optimizer = SGD(for: model, learningRate: 0.01)
 
 //var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
 //        for: languageModel,
@@ -94,19 +94,31 @@ var optimizer = SGD(for: model)
 //        )
 //)
 
-for _ in 0..<400 {
+let sequences = ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"]
+
+for epochIndex in 0..<1000 {
 
     let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
         let probs = model(preprocessedText)
         let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
-//        print(res)
         return res
     }
 
-    print(loss)
+    // print(loss)
 
     optimizer.update(&model, along: grad)
+
+    if epochIndex % 100 == 0 {
+        print("After \(epochIndex) epochs: ")
+        print("Loss: \(loss)")
+        model.test(sequences)
+    }
 }
+
+
+// print(embs.shape)
+
+// try model.save(URL(fileURLWithPath: "/home/zeio/swift-models/assets/models"))
 
 
 ///
