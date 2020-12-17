@@ -185,10 +185,11 @@ public struct ELMO: Module {
             ).reshaped(to: [nSequences, -1, embeddingSize]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
 
             let vectors = embs.unstacked()
-            let similarity = cosineSimilarity(
-                vectors[0],
-                vectors[1]
-            )
+            // let similarity = cosineDistance(
+            //     vectors[0],
+            //     vectors[1]
+            // )
+            let similarity = (vectors[0] * vectors[1]).sum() / (sqrt((vectors[0] * vectors[0]).sum()) * sqrt((vectors[1] * vectors[1]).sum()))
 
             print("Similarity of phrases '\(sequencePair[0])' and '\(sequencePair[1])' is \(String(format: "%.3f", similarity.scalar!))")
         }
