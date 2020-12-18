@@ -253,18 +253,21 @@ public struct ELMO: Module {
         return probs
     }
 
+    public func embed(_ texts: [String]) -> Tensor<Float> {
+        let nSequences = texts.count
+        return firstRecurrentCell(
+            tokenEmbeddings(
+                preprocess(
+                    sequences: texts
+                )
+            )
+        ).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
+    } 
+
     public func test(_ sequences: [String]) {
         var logEntries = [(Float, String)]()
         for sequencePair in makeSequencePairs(sequences) {
-            let nSequences = sequencePair.count
-            let embs = firstRecurrentCell(
-                tokenEmbeddings(
-                    preprocess(
-                        sequences: sequencePair
-                    )
-                )
-            ).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
-
+            let embs = embed(sequencePair)
             let vectors = embs.unstacked()
             // let similarity = cosineDistance(
             //     vectors[0],
