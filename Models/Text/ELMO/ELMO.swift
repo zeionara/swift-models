@@ -37,6 +37,13 @@ func makeSequencePairs(_ sequences: [String]) -> [[String]] {
     return pairs
 }
 
+private func checkShapeAndSet(_ tensor: inout Tensor<Float>, to value: Tensor<Float>) {
+    assert(
+        tensor.shape == value.shape, "shape mismatch while setting: \(tensor.shape) to \(value.shape)"
+    )
+    tensor = value
+}
+
 public struct BiLSTM: Layer {
     public typealias Scalar = Float
 
@@ -46,6 +53,36 @@ public struct BiLSTM: Layer {
     public init(inputSize: Int, hiddenSize: Int) {
         forwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
         backwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
+    }
+
+    public init(inputSize: Int, hiddenSize: Int, weight: Tensor<Scalar>) {
+        let unstackedWeight = weight.unstacked()
+
+        let forwardLSTMBias = unstackedWeight[0]
+        let backwardLSTMBias = unstackedWeight[1]
+
+        let unstackedWeights = Array(unstackedWeight[2..<unstackedWeight.count])
+        let weightHeight = unstackedWeights.count / 2
+
+        let forwardLSTMWeight = Tensor<Scalar>(stacking: Array(unstackedWeights[0..<weightHeight]))
+        let backwardLSTMWeight = Tensor<Scalar>(stacking: Array(unstackedWeights[weightHeight..<unstackedWeights.count]))
+
+        var forwardLSTMCell = LSTMCell<Scalar>(inputSize: inputSize, hiddenSize: hiddenSize)
+
+        forwardLSTMCell.fusedWeight = forwardLSTMWeight
+        forwardLSTMCell.fusedBias = forwardLSTMBias
+
+        forwardLSTM = LSTM<Scalar>(forwardLSTMCell)
+
+        var backwardLSTMCell = LSTMCell<Scalar>(inputSize: inputSize, hiddenSize: hiddenSize)
+
+        backwardLSTMCell.fusedWeight = backwardLSTMWeight
+        backwardLSTMCell.fusedBias = backwardLSTMBias
+
+        backwardLSTM = LSTM<Scalar>(backwardLSTMCell)
+
+        // forwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
+        // backwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
     }
 
     @differentiable
@@ -67,15 +104,25 @@ public struct BiLSTM: Layer {
         return concatenatedResult
     }
 
-    // public var tensor: Tensor<Scalar> {
-    //     forwardLSTM.cell.forgetBias = forwardLSTM.cell.forgetBias
-    //     return forwardLSTM.cell.forgetBias
-    // }
+    public var tensor: Tensor<Scalar> {
+        let tensor = Tensor<Scalar>(
+            stacking: [forwardLSTM.cell.fusedBias] +
+            [backwardLSTM.cell.fusedBias] +
+            forwardLSTM.cell.fusedWeight.unstacked() +
+            backwardLSTM.cell.fusedWeight.unstacked()
+        )
+        // print(tensor.shape)
+        // forwardLSTM.cell.fusedWeight = forwardLSTM.cell.fusedWeight
+        return tensor
+    }
 }
 
-let DENSE_LAYER_KEY = "dense"
+let EMBEDDINGS_KEY = "embeddings"
 let FIRST_BILSTM_CELL_KEY = "first-bilstm"
+let SECOND_BILSTM_CELL_KEY = "second-bilstm"
+let DENSE_LAYER_KEY = "dense"
 
+public let MODEL_NAME = "elmo"
 
 public struct ELMO: Module {
     // TODO: Convert to a generic constraint once TF-427 is resolved.
@@ -85,7 +132,7 @@ public struct ELMO: Module {
     @noDerivative public let embeddingSize: Int
     @noDerivative public let tokenizer: Tokenizer
     @noDerivative public let hiddenSize: Int
-    @noDerivative public let initializerStandardDeviation: Scalar
+    @noDerivative public let initializerStandardDeviation: Scalar?
 
     public var tokenEmbeddings: Embedding<Scalar>
     public var firstRecurrentCell: BiLSTM
@@ -121,28 +168,37 @@ public struct ELMO: Module {
         )
     }
 
-    // public init(_ path: URL, _ modelName: String) {
-    //     self.vocabulary = try Vocabulary(fromFile: path.appendingPathComponent("\(modelName).txt"), bert: false)
-    //     self.embeddingSize = embeddingSize
-    //     self.tokenizer = BERTTokenizer(vocabulary: vocabulary)
-    //     self.initializerStandardDeviation = initializerStandardDeviation
-    //     self.hiddenSize = hiddenSize
+    public init(_ path: URL, _ modelName: String = MODEL_NAME) throws {
+        self.vocabulary = try Vocabulary(fromFile: path.appendingPathComponent("\(modelName).vocabulary"), bert: false)
+        self.tokenizer = BERTTokenizer(vocabulary: vocabulary)
 
-    //     recurrentCells = Sequential {
-    //         BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize)
-    //         BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize)
-    //     }
+        let checkpointOperator = try CheckpointReader(
+            checkpointLocation: path.appendingPathComponent(modelName),
+            modelName: modelName
+        )
+
+        let dense_ = Dense<Scalar>(weight: Tensor<Scalar>(checkpointOperator.loadTensor(named: DENSE_LAYER_KEY)), activation: softmax)
+        let hiddenSize_ = dense_.weight.shape[0] / 2
+
+        let tokenEmbeddings_ = Embedding<Scalar>(
+            embeddings: Tensor<Scalar>(checkpointOperator.loadTensor(named: EMBEDDINGS_KEY))
+        )
+
+        let embeddingSize_ = tokenEmbeddings_.embeddings.shape[1]
+
+        print("Initializing bilstm cells")
+        // recurrentCells = Sequential {
+        firstRecurrentCell = BiLSTM(inputSize: embeddingSize_, hiddenSize: hiddenSize_, weight: Tensor<Scalar>(checkpointOperator.loadTensor(named: FIRST_BILSTM_CELL_KEY)))
+        secondRecurrentCell = BiLSTM(inputSize: hiddenSize_ * 2, hiddenSize: hiddenSize_, weight: Tensor<Scalar>(checkpointOperator.loadTensor(named: SECOND_BILSTM_CELL_KEY)))
+        // }
+        print("Initialized bilstm cells")
         
-    //     dense = Dense<Scalar>(inputSize: hiddenSize * 2, outputSize: vocabulary.count, activation: softmax)
-
-    //     tokenEmbeddings = Embedding<Scalar>(
-    //             vocabularySize: vocabulary.count,
-    //             embeddingSize: embeddingSize,
-    //             embeddingsInitializer: truncatedNormalInitializer(
-    //                     standardDeviation: Tensor<Scalar>(initializerStandardDeviation)
-    //             )
-    //     )
-    // }
+        self.dense = dense_
+        self.hiddenSize = hiddenSize_
+        self.tokenEmbeddings = tokenEmbeddings_
+        self.embeddingSize = embeddingSize_
+        self.initializerStandardDeviation = Optional.none
+    }
 
     // Obtains tokens' indices in the vocabulary
     public func preprocess(sequences: [String]) -> Tensor<Int32> {
@@ -225,19 +281,19 @@ public struct ELMO: Module {
         }
     }
 
-    // public func save(_ path: URL, modelName: String = "elmo") throws {
-    //     try FileManager.default.copyItem(at: vocabulary.path!, to: path.appendingPathComponent("\(modelName).vocabulary"))
+    public func save(_ path: URL, modelName: String = MODEL_NAME) throws {
+        try FileManager.default.copyItem(at: vocabulary.path!, to: path.appendingPathComponent("\(modelName).vocabulary"))
 
-    //     print(recurrentCells.layer1.tensor.shape)
-
-    //     try CheckpointWriter(
-    //         tensors: [
-    //             DENSE_LAYER_KEY: dense.weight,
-    //             FIRST_BILSTM_CELL_KEY: recurrentCells.layer1.tensor
-    //         ]
-    //     ).write(
-    //         to: path,
-    //         name: modelName
-    //     )
-    // }
+        try CheckpointWriter(
+            tensors: [
+                EMBEDDINGS_KEY: tokenEmbeddings.embeddings,
+                FIRST_BILSTM_CELL_KEY: firstRecurrentCell.tensor,
+                SECOND_BILSTM_CELL_KEY: secondRecurrentCell.tensor,
+                DENSE_LAYER_KEY: dense.weight
+            ]
+        ).write(
+            to: path,
+            name: modelName
+        )
+    }
 }

@@ -38,6 +38,10 @@ extension Array {
     }
 }
 
+func getModelsRootPath() -> URL{
+    return URL(fileURLWithPath: "/home/zeio/swift-models/assets/models")
+}
+
 func generateVocabulary(corpusName: String) throws {
     let corpusRoot = "\(projectRoot)/assets/\(corpusName)"
     let corpusFilePath = URL(fileURLWithPath: "\(corpusRoot)/sentences.txt")
@@ -96,7 +100,7 @@ var optimizer = Adam(for: model, learningRate: 0.05)
 
 let sequences = ["a b", "c d", "e f", "a f"] // ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"]
 
-for epochIndex in 0..<1001 {
+for epochIndex in 0..<101 {
 
     let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
         let probs = model(preprocessedText)
@@ -119,8 +123,11 @@ for epochIndex in 0..<1001 {
 
 // print(embs.shape)
 
-// try model.save(URL(fileURLWithPath: "/home/zeio/swift-models/assets/models"))
+try model.save(getModelsRootPath())
 
+let testModel = try ELMO(getModelsRootPath())
+
+testModel.test(sequences)
 
 ///
 ///
