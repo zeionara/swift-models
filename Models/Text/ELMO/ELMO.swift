@@ -212,7 +212,7 @@ public struct ELMO: Module {
             }
         }
         let tokenIds = tokens.map {
-            Int32(vocabulary.id(forToken: $0)!)
+            Int32(vocabulary.id(forToken: $0) ?? vocabulary.unknownTokenId)
         }
 
         return Tensor(tokenIds)
