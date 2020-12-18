@@ -262,7 +262,17 @@ public struct ELMO: Module {
                 )
             )
         ).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
-    } 
+    }
+
+    public func embed(_ texts: [String?]) -> [Tensor<Float>?] {
+        return texts.map{ text in
+            if let unwrappedText = text {
+                return embed([unwrappedText]).flattened()
+            } else {
+                return Optional.none
+            }
+        }
+    }
 
     public func test(_ sequences: [String]) {
         var logEntries = [(Float, String)]()
