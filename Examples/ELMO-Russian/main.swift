@@ -24,6 +24,8 @@ let projectRoot = "\(ProcessInfo.processInfo.environment["HOME"]!)/swift-models"
 let device = Device.default
 let specialTokens = [String]() // ["[CLS]", "[SEP]", "[UNK]"]
 
+let nEpochs = 10
+
 // extension Array {
 //     public func applyMask(mask: [Int32], reversed: Bool = false) -> [Element] {
 //         var result = [Element]()
@@ -81,8 +83,10 @@ var optimizer = Adam(for: model, learningRate: 0.05)
 let sequences = ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"] // ["a b", "c d", "e f", "a f"]
 
 let preprocessedText = model.preprocess(sequences: stringSentences, maxSequenceLength: 128)
+let nBatches = preprocessedText.count
 
-for epochIndex in 0...10000 {
+for epochIndex in 0...nEpochs {
+    let epochStartTime = DispatchTime.now().uptimeNanoseconds
     for (batchIndex, batch) in preprocessedText.enumerated() {
         // print("a \(batch.count)")
         // let preprocessedText = model.preprocess(sequences: batch)
@@ -93,16 +97,16 @@ for epochIndex in 0...10000 {
         // if batchIndex < preprocessedText.count - 1 {
             // print("Next batch: \(preprocessedText[batchIndex + 1])")
         // }
-        let targetWordIndices = batch.flattened().unstacked().map{i in i.scalar!}.dropFirst() +
-            [batchIndex == preprocessedText.count - 1 ? 0 : preprocessedText[batchIndex + 1].unstacked().first!.scalar!]
+        let targetWordIndices = Tensor(batch.flattened().unstacked().map{i in i.scalar!}.dropFirst() +
+            [batchIndex == preprocessedText.count - 1 ? 0 : preprocessedText[batchIndex + 1].unstacked().first!.scalar!])
         // print("Target word indices: \(targetWordIndices)")
         // print("d")
-        let labels = model.vocabulary.oneHotEncodings(forIds: targetWordIndices.map{Int($0)})
+        // let labels = model.vocabulary.oneHotEncodings(forIds: targetWordIndices.map{Int($0)})
         // print("e")
 
         let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
             let probs = model(batch)
-            let res = softmaxCrossEntropy(logits: probs, probabilities: labels)
+            let res = softmaxCrossEntropy(logits: probs, labels: targetWordIndices)
             return res
         }
 
@@ -118,8 +122,11 @@ for epochIndex in 0...10000 {
             model.test(sequences)
         }
 
-        print("Completed \(epochIndex).\(batchIndex)")
+        print("Completed \(batchIndex + 1)/\(nBatches) batch in \(epochIndex + 1)/\(nEpochs) epoch")
     }
+    print("Completed \(epochIndex)th epoch in \((DispatchTime.now().uptimeNanoseconds - epochStartTime) / 1_000_000_000) seconds")
+
+    try model.save(getModelsRootPath())
 }
 
 
@@ -166,9 +173,9 @@ for epochIndex in 0...10000 {
 
 // try model.save(getModelsRootPath())
 
-// let testModel = try ELMO(getModelsRootPath())
+let testModel = try ELMO(getModelsRootPath())
 
-// testModel.test(sequences)
+testModel.test(sequences)
 
 ///
 ///
