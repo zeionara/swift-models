@@ -186,12 +186,12 @@ public struct ELMO: Module {
 
         let embeddingSize_ = tokenEmbeddings_.embeddings.shape[1]
 
-        print("Initializing bilstm cells")
+        // print("Initializing bilstm cells")
         // recurrentCells = Sequential {
         firstRecurrentCell = BiLSTM(inputSize: embeddingSize_, hiddenSize: hiddenSize_, weight: Tensor<Scalar>(checkpointOperator.loadTensor(named: FIRST_BILSTM_CELL_KEY)))
         secondRecurrentCell = BiLSTM(inputSize: hiddenSize_ * 2, hiddenSize: hiddenSize_, weight: Tensor<Scalar>(checkpointOperator.loadTensor(named: SECOND_BILSTM_CELL_KEY)))
         // }
-        print("Initialized bilstm cells")
+        // print("Initialized bilstm cells")
         
         self.dense = dense_
         self.hiddenSize = hiddenSize_
@@ -222,13 +222,17 @@ public struct ELMO: Module {
     public func callAsFunction(_ input: Tensor<Int32>) -> Tensor<Scalar> {
         
         // 1. Take token embeddings
-        
-        let tokenEmbeddings = self.tokenEmbeddings(input)
+        // print(input.shape)
+        // print("Obtaining embeddings")
+        let tokenEmbeddings_ = self.tokenEmbeddings(input)
+        // print(tokenEmbeddings_.shape)
         
         // 2. Pass embeddings through the recurrent cells
         
-        let firstCellConcatenatedResult = firstRecurrentCell(tokenEmbeddings) + tokenEmbeddings // Tensor(stacking: [tokenEmbeddings, tokenEmbeddings], alongAxis: 1).reshaped(to: [-1, embeddingSize])
+        let firstCellConcatenatedResult = firstRecurrentCell(tokenEmbeddings_) + tokenEmbeddings_ // Tensor(stacking: [tokenEmbeddings, tokenEmbeddings], alongAxis: 1).reshaped(to: [-1, embeddingSize])
+        // print("Passed first cell")
         let secondCellConcatenatedResult = secondRecurrentCell(firstCellConcatenatedResult)
+        // print("Passed second cell")
 
         // 4. Convert results to next word probabilities
         // print("probs shape")
@@ -239,15 +243,17 @@ public struct ELMO: Module {
         //                 secondCellConcatenatedResult
         //             ]
         //         ).mean(alongAxes: [0]).reshaped(to: [-1, embeddingSize]).shape)
-        let probs = softmax(
-            dense(
-                Tensor(
+        let combined = Tensor(
                     stacking: [
-                        tokenEmbeddings,
+                        tokenEmbeddings_,
                         firstCellConcatenatedResult,
                         secondCellConcatenatedResult
                     ]
-                ).mean(alongAxes: [0]).reshaped(to: [-1, embeddingSize])
+                )
+        // print("Combined")
+        let probs = softmax(
+            dense(
+                combined.mean(alongAxes: [0]).reshaped(to: [-1, embeddingSize])
             )
         )
         return probs
@@ -255,13 +261,22 @@ public struct ELMO: Module {
 
     public func embed(_ texts: [String]) -> Tensor<Float> {
         let nSequences = texts.count
-        return firstRecurrentCell(
-            tokenEmbeddings(
-                preprocess(
-                    sequences: texts
-                )
+
+        let embeddings = tokenEmbeddings(
+            preprocess(
+                sequences: texts
             )
-        ).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
+        )
+        let firstCellOutput = firstRecurrentCell(embeddings)
+        let secondCellOutput = secondRecurrentCell(firstCellOutput + embeddings)
+
+        return Tensor(
+            stacking: [
+                embeddings,
+                firstCellOutput,
+                secondCellOutput
+            ]
+        ).mean(alongAxes: [0]).reshaped(to: [nSequences, -1, hiddenSize * 2]).mean(alongAxes: [1]).reshaped(to: [nSequences, -1])
     }
 
     public func embed(_ texts: [String?]) -> [Tensor<Float>?] {

@@ -79,9 +79,12 @@ public struct Vocabulary {
     }
 
     public func oneHotEncoding(forId id: Int) -> Tensor<Float> {
-        Tensor((0..<count).map { i -> Float in
-            i == id ? 1.0 : 0.0
-        })
+        // Tensor((0..<count).map { i -> Float in
+        //     i == id ? 1.0 : 0.0
+        // })
+        Tensor(
+            Array(repeating: 0.0, count: id) + [1.0] + Array(repeating: 0.0, count: self.count - id - 1)
+        )
     }
 
     public func oneHotEncodings(forIds tokenIds: [Int]) -> Tensor<Float> {
