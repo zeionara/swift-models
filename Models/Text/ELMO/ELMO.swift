@@ -25,6 +25,37 @@ import TensorFlow
 //     }
 // }
 
+extension Array {
+    public func applyMask(mask: [Int32], reversed: Bool = false) -> [Element] {
+        var result = [Element]()
+
+        for (i, item) in enumerated() {
+            if mask[i] == 0 && reversed || mask[i] == 1 && !reversed {
+                result.append(item)
+            }
+        }
+
+        return result
+    }
+
+    public func batched(size: Int, shouldRandomize: Bool = true, filter: Optional<(Element) -> Bool> = Optional.none) -> [[Element]] {
+        var filteredArray = self
+        if shouldRandomize {
+            filteredArray.shuffle()
+        }
+        if let filter_ = filter {
+            filteredArray = filteredArray.filter(filter_)
+        }
+        let nBatches = Int((Float(filteredArray.count) / Float(size)).rounded(.up))
+        return (0..<nBatches).map {i in
+            let lastIndex = Swift.min((i+1)*size, filteredArray.count)
+            return Array(
+                filteredArray[i*size..<lastIndex]
+            )
+        }
+    }
+}
+
 func makeSequencePairs(_ sequences: [String]) -> [[String]] {
     var pairs = [[String]]()
     for i in 0..<sequences.count {
@@ -201,21 +232,28 @@ public struct ELMO: Module {
     }
 
     // Obtains tokens' indices in the vocabulary
-    public func preprocess(sequences: [String]) -> Tensor<Int32> {
-        var sequences = sequences.map(tokenizer.tokenize)
+    public func preprocess(sequences: [String], maxSequenceLength: Int? = Optional.none, shouldOmitEOS: Bool = false) -> [ Tensor<Int32> ] {
+        var sequences = sequences.filter{$0 != ""}.map(tokenizer.tokenize)
 
         var tokens = [String]()
 
-        for sequence in sequences {
+        for (sequenceIndex, sequence) in sequences.enumerated() {
             for token in sequence {
                 tokens.append(token)
+            }
+            if (sequence.count > 0) && (sequenceIndex < sequences.count - 1) && !shouldOmitEOS {
+                tokens.append("[EOS]")
             }
         }
         let tokenIds = tokens.map {
             Int32(vocabulary.id(forToken: $0) ?? vocabulary.unknownTokenId)
         }
 
-        return Tensor(tokenIds)
+        if let maxSequenceLength_ = maxSequenceLength {
+            return tokenIds.batched(size: maxSequenceLength_, shouldRandomize: false).map{ Tensor($0) }
+        } else {
+            return [ Tensor(tokenIds) ]
+        }
     }
 
     @differentiable
@@ -259,16 +297,27 @@ public struct ELMO: Module {
         return probs
     }
 
-    public func embed(_ texts: [String]) -> Tensor<Float> {
+    public func embed(_ texts: [String], shouldOmitEOS: Bool = false) -> Tensor<Float> {
         let nSequences = texts.count
 
-        let embeddings = tokenEmbeddings(
-            preprocess(
-                sequences: texts
-            )
-        )
+        let embeddings = // Tensor(
+            // stacking: texts.map{
+                tokenEmbeddings(
+                    preprocess(
+                        sequences: texts, // [$0]
+                        shouldOmitEOS: shouldOmitEOS
+                    )[0]
+                )
+            // }
+        // )
+
+        // print("Computing first cell output")
         let firstCellOutput = firstRecurrentCell(embeddings)
+        // print("Computed first cell output")
         let secondCellOutput = secondRecurrentCell(firstCellOutput + embeddings)
+
+        // print(firstCellOutput.shape)
+        // print(secondCellOutput.shape)
 
         return Tensor(
             stacking: [
@@ -292,8 +341,11 @@ public struct ELMO: Module {
     public func test(_ sequences: [String]) {
         var logEntries = [(Float, String)]()
         for sequencePair in makeSequencePairs(sequences) {
-            let embs = embed(sequencePair)
+            // print("a")
+            let embs = embed(sequencePair, shouldOmitEOS: true)
+            // print("b")
             let vectors = embs.unstacked()
+            // print("c")
             // let similarity = cosineDistance(
             //     vectors[0],
             //     vectors[1]

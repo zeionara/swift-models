@@ -24,36 +24,36 @@ let projectRoot = "\(ProcessInfo.processInfo.environment["HOME"]!)/swift-models"
 let device = Device.default
 let specialTokens = [String]() // ["[CLS]", "[SEP]", "[UNK]"]
 
-extension Array {
-    public func applyMask(mask: [Int32], reversed: Bool = false) -> [Element] {
-        var result = [Element]()
+// extension Array {
+//     public func applyMask(mask: [Int32], reversed: Bool = false) -> [Element] {
+//         var result = [Element]()
 
-        for (i, item) in enumerated() {
-            if mask[i] == 0 && reversed || mask[i] == 1 && !reversed {
-                result.append(item)
-            }
-        }
+//         for (i, item) in enumerated() {
+//             if mask[i] == 0 && reversed || mask[i] == 1 && !reversed {
+//                 result.append(item)
+//             }
+//         }
 
-        return result
-    }
+//         return result
+//     }
 
-    public func batched(size: Int, shouldRandomize: Bool = true, filter: Optional<(Element) -> Bool> = Optional.none) -> [[Element]] {
-        var filteredArray = self
-        if shouldRandomize {
-            filteredArray.shuffle()
-        }
-        if let filter_ = filter {
-            filteredArray = filteredArray.filter(filter_)
-        }
-        let nBatches = Int((Float(filteredArray.count) / Float(size)).rounded(.up))
-        return (0..<nBatches).map {i in
-            let lastIndex = Swift.min((i+1)*size, filteredArray.count)
-            return Array(
-                filteredArray[i*size..<lastIndex]
-            )
-        }
-    }
-}
+//     public func batched(size: Int, shouldRandomize: Bool = true, filter: Optional<(Element) -> Bool> = Optional.none) -> [[Element]] {
+//         var filteredArray = self
+//         if shouldRandomize {
+//             filteredArray.shuffle()
+//         }
+//         if let filter_ = filter {
+//             filteredArray = filteredArray.filter(filter_)
+//         }
+//         let nBatches = Int((Float(filteredArray.count) / Float(size)).rounded(.up))
+//         return (0..<nBatches).map {i in
+//             let lastIndex = Swift.min((i+1)*size, filteredArray.count)
+//             return Array(
+//                 filteredArray[i*size..<lastIndex]
+//             )
+//         }
+//     }
+// }
 
 func getModelsRootPath() -> URL{
     return URL(fileURLWithPath: "/home/zeio/swift-models/assets/models")
@@ -80,20 +80,28 @@ var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vo
 var optimizer = Adam(for: model, learningRate: 0.05)
 let sequences = ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"] // ["a b", "c d", "e f", "a f"]
 
+let preprocessedText = model.preprocess(sequences: stringSentences, maxSequenceLength: 128)
+
 for epochIndex in 0...10000 {
-    for (batchIndex, batch) in stringSentences.batched(size: 4){$0 != ""}.enumerated() {
+    for (batchIndex, batch) in preprocessedText.enumerated() {
         // print("a \(batch.count)")
-        let preprocessedText = model.preprocess(sequences: batch)
+        // let preprocessedText = model.preprocess(sequences: batch)
         // print("b \(preprocessedText.shape)")
-        let probs = model(preprocessedText)
+        // let probs = model(batch)
         // print("c")
-        let predictedWordIndices = preprocessedText.flattened().unstacked().map{ i in i.scalar!}.dropFirst() + [0]
+        // print("Current batch: \(batch)")
+        // if batchIndex < preprocessedText.count - 1 {
+            // print("Next batch: \(preprocessedText[batchIndex + 1])")
+        // }
+        let targetWordIndices = batch.flattened().unstacked().map{i in i.scalar!}.dropFirst() +
+            [batchIndex == preprocessedText.count - 1 ? 0 : preprocessedText[batchIndex + 1].unstacked().first!.scalar!]
+        // print("Target word indices: \(targetWordIndices)")
         // print("d")
-        let labels = model.vocabulary.oneHotEncodings(forIds: predictedWordIndices.map{Int($0)})
+        let labels = model.vocabulary.oneHotEncodings(forIds: targetWordIndices.map{Int($0)})
         // print("e")
 
         let (loss, grad) = valueWithGradient(at: model) { model -> Tensor<Float> in
-            let probs = model(preprocessedText)
+            let probs = model(batch)
             let res = softmaxCrossEntropy(logits: probs, probabilities: labels)
             return res
         }
@@ -156,11 +164,11 @@ for epochIndex in 0...10000 {
 
 // print(embs.shape)
 
-try model.save(getModelsRootPath())
+// try model.save(getModelsRootPath())
 
-let testModel = try ELMO(getModelsRootPath())
+// let testModel = try ELMO(getModelsRootPath())
 
-testModel.test(sequences)
+// testModel.test(sequences)
 
 ///
 ///
