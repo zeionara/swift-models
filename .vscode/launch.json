@@ -25,7 +25,11 @@
                 "train",
                 "elmo",
                 "-i",
-                "baneks-tiny"
+                "baneks-tiny",
+                "-f",
+                "elmo-tiny",
+                "-n",
+                "100"
             ],
             "sourceLanguages": [
                 "swift"

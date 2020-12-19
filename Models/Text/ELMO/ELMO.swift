@@ -361,7 +361,7 @@ public struct ELMO: Module {
         }
     }
 
-    public func save(_ path: URL, modelName: String = MODEL_NAME) throws {
+    public func save(_ path: URL, _ modelName: String = MODEL_NAME) throws {
         try FileManager.default.copyItem(at: vocabulary.path!, to: path.appendingPathComponent("\(modelName).vocabulary"))
 
         try CheckpointWriter(

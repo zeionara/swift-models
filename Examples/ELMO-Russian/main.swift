@@ -25,10 +25,8 @@ let projectRoot = "\(ProcessInfo.processInfo.environment["HOME"]!)/swift-models"
 let device = Device.default
 let specialTokens = [String]()
 
-let nEpochs = 10
-
 func getModelsRootPath() -> URL{
-    return URL(fileURLWithPath: "/home/zeio/swift-models/assets/models")
+    return URL(fileURLWithPath: "\(projectRoot)/assets/models")
 }
 
 func generateVocabulary(corpusName: String) throws {
@@ -71,6 +69,9 @@ struct Train: ParsableCommand {
     @Option(name: .shortAndLong, default: 128, help: "Max number of tokens in a batch")
     private var maxSequenceLength: Int
 
+    @Option(name: .shortAndLong, default: 10, help: "Number of train steps")
+    private var nEpochs: Int
+
     mutating func run() throws {
         if model != .elmo {
             throw ModelError.unsupportedModel(message: "Model \(model) is not supported yet!")
@@ -107,14 +108,14 @@ struct Train: ParsableCommand {
                     model.test(sequences)
                 }
 
-                print("Completed \(batchIndex + 1)/\(nBatches) batch in \(epochIndex + 1)/\(nEpochs) epoch")
+                print("Completed \(batchIndex + 1)/\(nBatches) batch in \(epochIndex)/\(nEpochs) epoch")
             }
-            print("Completed \(epochIndex + 1)th epoch in \((DispatchTime.now().uptimeNanoseconds - epochStartTime) / 1_000_000_000) seconds")
+            print("Completed \(epochIndex)th epoch in \((DispatchTime.now().uptimeNanoseconds - epochStartTime) / 1_000_000_000) seconds")
 
-            try model.save(getModelsRootPath())
+            try model.save(getModelsRootPath(), filename)
         }
 
-        let testModel = try ELMO(getModelsRootPath())
+        let testModel = try ELMO(getModelsRootPath(), filename)
 
         testModel.test(sequences)
     }
