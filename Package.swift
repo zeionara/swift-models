@@ -143,7 +143,7 @@ let package = Package(
         .target(
                 name: "BERT-Russian", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/BERT-Russian"),
         .target(
-                name: "ELMO-Russian", dependencies: ["TextModels", "Datasets", "TrainingLoop"], path: "Examples/ELMO-Russian"),
+                name: "ELMO-Russian", dependencies: ["ArgumentParser", "TextModels", "Datasets", "TrainingLoop"], path: "Examples/ELMO-Russian"),
         .testTarget(name: "SupportTests", dependencies: ["ModelSupport"]),
         .target(
             name: "CycleGAN",
