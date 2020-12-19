@@ -21,7 +21,12 @@
             "preLaunchTask": "swift-build-elmo",
             "name": "Debug elmo",
             "program": "${workspaceFolder}/.build/debug/ELMO-Russian",
-            "args": [],
+            "args": [
+                "train",
+                "elmo",
+                "-i",
+                "baneks-tiny"
+            ],
             "sourceLanguages": [
                 "swift"
             ] // ,
