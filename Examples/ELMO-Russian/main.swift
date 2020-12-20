@@ -73,6 +73,7 @@ struct Train: ParsableCommand {
     private var nEpochs: Int
 
     mutating func run() throws {
+        let device = Device.default
         if model != .elmo {
             throw ModelError.unsupportedModel(message: "Model \(model) is not supported yet!")
         }
@@ -81,11 +82,12 @@ struct Train: ParsableCommand {
 
         let stringSentences = try String(contentsOf: URL(fileURLWithPath: "\(projectRoot)/assets/\(inputPath)/sentences.txt")).components(separatedBy: "\n")
         let vocabulary = try Vocabulary(fromFile: URL(fileURLWithPath: "\(projectRoot)/assets/\(inputPath)/vocabulary.txt"), bert: false)
-        var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: embeddingSize)//, hiddenSize: 50)
+        var model = ELMO(vocabulary: vocabulary, tokenizer: BERTTokenizer(vocabulary: vocabulary), embeddingSize: embeddingSize, on: device)//, hiddenSize: 50)
         var optimizer = Adam(for: model, learningRate: learningRate)
         let sequences = ["твой анек", "больше лайков", "вчера говорили"] // ["Купил мужик", "она анекдот", "как раз"] // ["a b", "c d", "e f", "a f"]
 
-        let preprocessedText = model.preprocess(sequences: stringSentences, maxSequenceLength: maxSequenceLength)
+        let preprocessedText = model.preprocess(sequences: stringSentences, maxSequenceLength: maxSequenceLength, device: device)
+        print(preprocessedText[0].device)
         let nBatches = preprocessedText.count
 
         for epochIndex in 1...nEpochs {

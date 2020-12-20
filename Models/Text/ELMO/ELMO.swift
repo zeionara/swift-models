@@ -81,9 +81,19 @@ public struct BiLSTM: Layer {
     public var forwardLSTM: LSTM<Scalar>
     public var backwardLSTM: LSTM<Scalar>
 
-    public init(inputSize: Int, hiddenSize: Int) {
-        forwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
-        backwardLSTM = LSTM<Scalar>(LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize))
+    public init(inputSize: Int, hiddenSize: Int, on device: Device = .default) {
+        forwardLSTM = LSTM<Scalar>(
+            LSTMCell(
+                copying: LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize),
+                to: device
+            )    
+        )
+        backwardLSTM = LSTM<Scalar>(
+            LSTMCell(
+                copying: LSTMCell(inputSize: inputSize, hiddenSize: hiddenSize),
+                to: device    
+            )
+        )
     }
 
     public init(inputSize: Int, hiddenSize: Int, weight: Tensor<Scalar>) {
@@ -174,7 +184,8 @@ public struct ELMO: Module {
             vocabulary: Vocabulary,
             tokenizer: Tokenizer,
             embeddingSize: Int,
-            initializerStandardDeviation: Scalar = 0.02 // ,
+            initializerStandardDeviation: Scalar = 0.02,
+            on device: Device = .default // ,
             // hiddenSize: Int
     ) {
         self.vocabulary = vocabulary
@@ -184,18 +195,24 @@ public struct ELMO: Module {
         self.hiddenSize = embeddingSize / 2 // hiddenSize
 
         // recurrentCells = Sequential {
-        firstRecurrentCell = BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize)
-        secondRecurrentCell = BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize)
+        firstRecurrentCell = BiLSTM(inputSize: embeddingSize, hiddenSize: hiddenSize, on: device)
+        secondRecurrentCell = BiLSTM(inputSize: hiddenSize * 2, hiddenSize: hiddenSize, on: device)
         // }
         
-        dense = Dense<Scalar>(inputSize: hiddenSize * 2, outputSize: vocabulary.count, activation: softmax)
+        dense = Dense<Scalar>(
+            copying: Dense<Scalar>(inputSize: hiddenSize * 2, outputSize: vocabulary.count, activation: softmax),
+            to: device
+        )
 
         tokenEmbeddings = Embedding<Scalar>(
-                vocabularySize: vocabulary.count,
-                embeddingSize: embeddingSize,
-                embeddingsInitializer: truncatedNormalInitializer(
-                        standardDeviation: Tensor<Scalar>(initializerStandardDeviation)
-                )
+            copying: Embedding<Scalar>(
+                    vocabularySize: vocabulary.count,
+                    embeddingSize: embeddingSize,
+                    embeddingsInitializer: truncatedNormalInitializer(
+                            standardDeviation: Tensor<Scalar>(initializerStandardDeviation)
+                    )
+            ),
+            to: device
         )
     }
 
@@ -232,7 +249,7 @@ public struct ELMO: Module {
     }
 
     // Obtains tokens' indices in the vocabulary
-    public func preprocess(sequences: [String], maxSequenceLength: Int? = Optional.none, shouldOmitEOS: Bool = false) -> [ Tensor<Int32> ] {
+    public func preprocess(sequences: [String], maxSequenceLength: Int? = Optional.none, shouldOmitEOS: Bool = false, device: Device = .default) -> [ Tensor<Int32> ] {
         var sequences = sequences.filter{$0 != ""}.map(tokenizer.tokenize)
 
         var tokens = [String]()
@@ -250,7 +267,7 @@ public struct ELMO: Module {
         }
 
         if let maxSequenceLength_ = maxSequenceLength {
-            return tokenIds.batched(size: maxSequenceLength_, shouldRandomize: false).map{ Tensor($0) }
+            return tokenIds.batched(size: maxSequenceLength_, shouldRandomize: false).map{ Tensor($0, on: device) }
         } else {
             return [ Tensor(tokenIds) ]
         }
