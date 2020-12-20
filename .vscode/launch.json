@@ -23,7 +23,13 @@
             "program": "${workspaceFolder}/.build/debug/LeNet-MNIST",
             "args": [
                 "-a",
-                "4"
+                "4",
+                "-n",
+                "10",
+                "--teacher-device",
+                "eager",
+                "--student-device",
+                "eager"
             ],
             "sourceLanguages": [
                 "swift"

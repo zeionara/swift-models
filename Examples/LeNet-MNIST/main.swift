@@ -29,11 +29,11 @@ public extension Array where Element == Double {
 
 // Until https://github.com/tensorflow/swift-apis/issues/993 is fixed, default to the eager-mode
 // device on macOS instead of X10.
-#if os(macOS)
-  let device = Device.defaultTFEager
-#else
-  let device = Device.defaultXLA
-#endif
+// #if os(macOS)
+//   let device = Device.defaultTFEager
+// #else
+//   let device = Device.defaultXLA
+// #endif
 
 typealias TeacherScalar = Double
 typealias StudentScalar = Float
@@ -65,6 +65,11 @@ where LogitsScalar: TensorFlowFloatingPoint, LabelsScalar: TensorFlowScalar, Lab
 
 struct LeNetOptimizer: ParsableCommand {
 
+  private enum ModelDevice: String, ExpressibleByArgument {
+      case eager
+      case xla
+  }
+
   @Option(name: .shortAndLong, default: 3, help: "Precision with which floating-point values will be printed")
   var accuracy: Int
 
@@ -74,8 +79,15 @@ struct LeNetOptimizer: ParsableCommand {
   @Option(name: .shortAndLong, default: 256, help: "How many images to precess at once")
   var batchSize: Int
 
-  private func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256) -> (TeacherModel, [Double]) {
-    
+  @Option(default: .eager, help: "Device for training and evaluating a teacher model")
+  private var teacherDevice: ModelDevice
+
+  @Option(default: .eager, help: "Device for training and evaluating a student model")
+  private var studentDevice: ModelDevice
+
+  private func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256, device: Device = .default) -> (TeacherModel, [Double]) {
+    // let device: Device = .default
+
     let dataset = MNIST(batchSize: batchSize, on: device)
     
     // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
@@ -111,26 +123,39 @@ struct LeNetOptimizer: ParsableCommand {
     let validationTimes = try! trainingLoop.fit(&teacher, epochs: nEpochs, on: device, teacher: teacher_)
 
     return (teacher, validationTimes)
-
   }
 
-  private func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel) -> (StudentModel, [Double]) {
-    
+  private func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel, teacherDevice: Device, device: Device = .default) -> (StudentModel, [Double]) {
+    // let device: Device = .defaultXLA
+
     let dataset = MNIST(batchSize: batchSize, on: device)
     
     // The LeNet-5 model, equivalent to `LeNet` in `ImageClassificationModels`.
     var model = Sequential {
-      Conv2D<StudentScalar>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu)
-      AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
-      Conv2D<StudentScalar>(filterShape: (5, 5, 3, 8), activation: relu)
-      AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
-      Flatten<StudentScalar>()
-      Dense<StudentScalar>(inputSize: 200, outputSize: 50, activation: relu)
+      Conv2D<StudentScalar>(copying: Conv2D<StudentScalar>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu), to: device)
+      AvgPool2D<StudentScalar>(copying: AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2)), to: device)
+      Conv2D<StudentScalar>(copying: Conv2D<StudentScalar>(filterShape: (5, 5, 3, 8), activation: relu), to: device)
+      AvgPool2D<StudentScalar>(copying: AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2)), to: device)
+      Flatten<StudentScalar>(copying: Flatten<StudentScalar>(), to: device)
+      Dense<StudentScalar>(copying: Dense<StudentScalar>(inputSize: 200, outputSize: 50, activation: relu), to: device)
       // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
-      Dense<StudentScalar>(inputSize: 50, outputSize: 10)
+      Dense<StudentScalar>(copying: Dense<StudentScalar>(inputSize: 50, outputSize: 10), to: device)
     }
 
-    var optimizer = SGD(for: model, learningRate: 0.1)
+    // var model = Sequential {
+    //   Conv2D<StudentScalar>(filterShape: (5, 5, 1, 3), padding: .same, activation: relu)
+    //   AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
+    //   Conv2D<StudentScalar>(filterShape: (5, 5, 3, 8), activation: relu)
+    //   AvgPool2D<StudentScalar>(poolSize: (2, 2), strides: (2, 2))
+    //   Flatten<StudentScalar>()
+    //   Dense<StudentScalar>(inputSize: 200, outputSize: 50, activation: relu)
+    //   // Dense<Float>(inputSize: 120, outputSize: 84, activation: relu)
+    //   Dense<StudentScalar>(inputSize: 50, outputSize: 10)
+    // }
+
+    var optimizer = SGD(copying: SGD(for: model, learningRate: 0.1), to: device)
+
+    print("Training")
 
     var trainingLoop = TrainingLoop<
       MNIST<SystemRandomNumberGenerator>.Training, MNIST<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<StudentModel>, TeacherScalar, StudentScalar
@@ -146,7 +171,7 @@ struct LeNetOptimizer: ParsableCommand {
 
     trainingLoop.statisticsRecorder!.setReportTrigger(.endOfBatch)
 
-    let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+    let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher, teacherDevice: teacherDevice, studentDevice: device)
 
     return (model, validationTimes)
 
@@ -156,8 +181,11 @@ struct LeNetOptimizer: ParsableCommand {
     var logger = Logger(label: "root")
     logger.logLevel = .info
 
+    let teacherDevice_ = teacherDevice == .eager ? Device.default : Device.defaultXLA
+    // let studentDevice_ = Device.default // studentDevice == .eager ? Device.default : Device.defaultXLA 
+
     let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher") {
-      trainTeacher(nEpochs: nEpochs, batchSize: batchSize)
+      trainTeacher(nEpochs: nEpochs, batchSize: batchSize, device: teacherDevice_)
     } log: { message, _ in
       logger.notice("\(message)")
     }
@@ -165,7 +193,7 @@ struct LeNetOptimizer: ParsableCommand {
     logger.notice("Average teacher validation time: \(String(format: "%.\(accuracy)f", teacherValidationTimes.average())) seconds")
 
     let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student") {
-      trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacher)
+      trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacher, teacherDevice: teacherDevice_, device: studentDevice == .eager ? Device.default : Device.defaultXLA)
     } log: { message, _ in
       logger.notice("\(message)")
     }

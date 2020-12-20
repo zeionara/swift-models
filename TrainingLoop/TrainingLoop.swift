@@ -29,7 +29,7 @@ public final class LossFunctionWrapper<Output: Differentiable, Target> {
 
 public func computeSoftmaxCrossEntropy<LogitsScalar, ProbabilitiesScalar, ResultScalar>(_ logits: Tensor<LogitsScalar>, _ probabilities: Tensor<ProbabilitiesScalar>) -> Tensor<ResultScalar>
 where LogitsScalar: TensorFlowFloatingPoint, ProbabilitiesScalar: TensorFlowFloatingPoint, ResultScalar: TensorFlowFloatingPoint {
-  return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), probabilities: Tensor<Float>(probabilities))) 
+  return Tensor<ResultScalar>(softmaxCrossEntropy(logits: Tensor<Float>(logits), probabilities: Tensor<Float>(probabilities)))
 }
 
 public func measureExecitionTime<ResultType>(prefix: String = "Executed", nDecimalPlaces: Int = 3, executeClosure: () throws -> ResultType, log: (String, Double) -> Void) throws -> ResultType {
@@ -316,7 +316,8 @@ where
     self.accuracy = accuracy
     self.lossFunction = LossFunction(lossFunction) { output, target in
       // print("Computing cv...")
-      computeSoftmaxCrossEntropy((output as! Tensor<StudentScalar>), (target as! Tensor<StudentScalar>))
+      // print((output as! Tensor<StudentScalar>).device)
+      return computeSoftmaxCrossEntropy((output as! Tensor<StudentScalar>), (target as! Tensor<StudentScalar>))
       // print("Computed cv...")
       // return result
       // softmaxCrossEntropy(logits: (output as! Tensor<Float>), probabilities: (target as! Tensor<Float>))
@@ -426,7 +427,7 @@ extension TrainingLoop {
 extension TrainingLoop {
   /// Performs `step` on each of `batches`.
   mutating private func multipleSteps<Batches: Collection, TeachingModel>(
-    on batches: Batches, step: (inout Self, Output?) throws -> Void, teacher: TeachingModel? = Optional.none
+    on batches: Batches, step: (inout Self, Output?) throws -> Void, teacher: TeachingModel? = Optional.none, teacherDevice: Device = .default, studentDevice: Device = .default
   ) throws where TeachingModel: Module { // Batches.Element == Batch, TeachingModel.Input == Opt.Model.Input
     batchCount = batches.count
     for (i, batch) in batches.enumerated() {
@@ -440,15 +441,24 @@ extension TrainingLoop {
       (lastStepInput, lastStepTarget) = ((fixedBatch as! Batch).data, (fixedBatch as! Batch).label)
       var teacherLogits: Output? = Optional.none
       if let unwrappedTeacher = teacher {
-        teacherLogits = (
-          Tensor<StudentScalar>(
-            softmax(
-              unwrappedTeacher(
-                Tensor<TeacherScalar>(lastStepInput! as! Tensor<StudentScalar>) as! TeachingModel.Input
-              ) as! Tensor<TeacherScalar>
-            )
-          ) as! Output
+        let softmaxed = softmax(
+          unwrappedTeacher(
+            Tensor<TeacherScalar>(
+              copying: Tensor<TeacherScalar>(
+                lastStepInput! as! Tensor<StudentScalar>
+              ),
+              to: teacherDevice
+            ) as! TeachingModel.Input
+          ) as! Tensor<TeacherScalar>
         )
+        teacherLogits = Tensor<StudentScalar>(
+          copying: (
+            Tensor<StudentScalar>(
+              softmaxed
+            )
+          ),
+          to: studentDevice
+        ) as! Output
       }
       // print(batch.label)
       do {
@@ -475,7 +485,8 @@ extension TrainingLoop {
     differentiableStep: (Model, inout Self, Output?) throws -> Void = {
       try $1.differentiableStep(model: $0, teacherLogits: $2)
     },
-    teacher: TeachingModel? = Optional.none
+    teacher: TeachingModel? = Optional.none,
+    teacherDevice: Device = .default, studentDevice: Device = .default
   ) throws -> [Double] where TeachingModel: Module { // TeachingModel.Input == Opt.Model.Input
     let callbacksCount = self.callbacks.count
     self.callbacks += callbacks
@@ -506,7 +517,9 @@ extension TrainingLoop {
                 step: {
                   try $0.trainingStep(model: &model, differentiableStep: differentiableStep, teacherLogits: $1)
                 },
-                teacher: teacher
+                teacher: teacher,
+                teacherDevice: teacherDevice,
+                studentDevice: studentDevice
               )
             } catch TrainingLoopAction.cancelTraining {}
             try handleEvent(.trainingEnd)

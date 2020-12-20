@@ -26,7 +26,7 @@ swift build --product LeNet-MNIST
 CUDA_VISIBLE_DEVICES=-1 .build/debug/LeNet-MNIST -a 4 -n 10
 ```
 
-Key points from the command output:
+Key points from the command output (both models were trained on CPU):
 
 ```sh
 accuracy: 0.9847
@@ -36,4 +36,16 @@ Average teacher validation time: 5.9152 seconds
 accuracy: 0.9772
 Trained student in 316.126 seconds
 Average student validation time: 1.0662 seconds (5.5481 times faster than teacher)
+```
+
+Key points from the command output (both models were trained on GPU without and with XLA respectively):
+
+```sh
+accuracy: 0.9835
+Trained teacher in 235.443 seconds
+Average teacher validation time: 0.9836 seconds
+
+accuracy: 0.9776
+Trained student in 111.172 seconds
+Average student validation time: 0.3544 seconds (2.7757 times faster than teacher)
 ```
