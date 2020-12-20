@@ -93,7 +93,7 @@ var optimizer = x10_optimizers_optimizer.GeneralOptimizer(
 for _ in 0..<4 {
 
     let (loss, grad) = valueWithGradient(at: languageModel) { model -> Tensor<Float> in
-        let res = kullbackLeiblerDivergence(predicted: probs, expected: softmax(labels * 10, alongAxis: 1))
+        let res = softmaxCrossEntropy(logits: probs, probabilities: softmax(labels * 10, alongAxis: 1))
         print(res)
         return res
     }
@@ -101,6 +101,8 @@ for _ in 0..<4 {
     print(loss, grad)
 
     optimizer.update(&languageModel, along: grad)
+
+    print("Optimization step succeeded")
 }
 
 
