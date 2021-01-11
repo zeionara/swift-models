@@ -85,6 +85,9 @@ struct LeNetOptimizer: ParsableCommand {
   @Option(default: .eager, help: "Device for training and evaluating a student model")
   private var studentDevice: ModelDevice
 
+  @Flag(name: .shortAndLong, help: "Just train student without a teacher")
+  private var disableTeacher = false
+
   private func trainTeacher(nEpochs: Int = 1, batchSize: Int = 256, device: Device = .default) -> (TeacherModel, [Double]) {
     // let device: Device = .default
 
@@ -125,7 +128,7 @@ struct LeNetOptimizer: ParsableCommand {
     return (teacher, validationTimes)
   }
 
-  private func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel, teacherDevice: Device, device: Device = .default) -> (StudentModel, [Double]) {
+  private func trainStudent(nEpochs: Int = 1, batchSize: Int = 256, teacher: TeacherModel?, teacherDevice: Device, device: Device = .default) -> (StudentModel, [Double]) {
     // let device: Device = .defaultXLA
 
     let dataset = MNIST(batchSize: batchSize, on: device)
@@ -178,9 +181,15 @@ struct LeNetOptimizer: ParsableCommand {
   }
 
   mutating func run() throws {
+    var teacherModel: TeacherModel? = Optional.none
+    var teacherModelDevice: Device = .default
+    var averageTeacherValidationTime: Double? = Optional.none
+    
     var logger = Logger(label: "root")
+
     logger.logLevel = .info
 
+    // if !disableTeacher {
     let teacherDevice_ = teacherDevice == .eager ? Device.default : Device.defaultXLA
     // let studentDevice_ = Device.default // studentDevice == .eager ? Device.default : Device.defaultXLA 
 
@@ -190,17 +199,25 @@ struct LeNetOptimizer: ParsableCommand {
       logger.notice("\(message)")
     }
 
-    logger.notice("Average teacher validation time: \(String(format: "%.\(accuracy)f", teacherValidationTimes.average())) seconds")
+    averageTeacherValidationTime = teacherValidationTimes.average()
+
+    logger.notice("Average teacher validation time: \(String(format: "%.\(accuracy)f", averageTeacherValidationTime!)) seconds")
+
+    teacherModelDevice = teacherDevice_
+    if !disableTeacher {
+      teacherModel = teacher
+    }
+    // }
 
     let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student") {
-      trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacher, teacherDevice: teacherDevice_, device: studentDevice == .eager ? Device.default : Device.defaultXLA)
+      trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacherModel, teacherDevice: teacherModelDevice, device: studentDevice == .eager ? Device.default : Device.defaultXLA)
     } log: { message, _ in
       logger.notice("\(message)")
     }
 
-    let validationTimeDifference = teacherValidationTimes.average() / studentValidationTimes.average()
+    let validationTimeDifference = averageTeacherValidationTime != Optional.none ? String(format: "%.\(accuracy)f", averageTeacherValidationTime! / studentValidationTimes.average()) : "-"
 
-    logger.notice("Average student validation time: \(String(format: "%.\(accuracy)f", studentValidationTimes.average())) seconds (\(String(format: "%.\(accuracy)f", validationTimeDifference)) times faster than teacher)")
+    logger.notice("Average student validation time: \(String(format: "%.\(accuracy)f", studentValidationTimes.average())) seconds (\(validationTimeDifference) times faster than teacher)")
 
   }
 }

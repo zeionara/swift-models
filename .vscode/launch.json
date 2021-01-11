@@ -29,7 +29,8 @@
                 "--teacher-device",
                 "eager",
                 "--student-device",
-                "eager"
+                "eager",
+                "-d"
             ],
             "sourceLanguages": [
                 "swift"
