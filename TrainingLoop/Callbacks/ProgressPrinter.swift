@@ -22,11 +22,13 @@ import Foundation
 public class ProgressPrinter {
   /// Length of the complete progress bar measured in count of `=` signs.
   public var progressBarLength: Int
+  public let accuracy: Int
 
   /// Creates an instance that prints training progress with the complete
   /// progress bar to be `progressBarLength` characters long.
-  public init(progressBarLength: Int = 30) {
+  public init(progressBarLength: Int = 30, accuracy: Int = 4) {
     self.progressBarLength = progressBarLength
+    self.accuracy = accuracy
   }
 
   /// Prints training or validation progress in response of the `event`.
@@ -87,7 +89,7 @@ public class ProgressPrinter {
   func formatStats(_ stats: [(String, Float)]) -> String {
     var result = ""
     for stat in stats {
-      result += " - \(stat.0): \(String(format: "%.4f", stat.1))"
+      result += " - \(stat.0): \(String(format: "%.\(accuracy)f", stat.1))"
     }
     return result
   }

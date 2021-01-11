@@ -326,7 +326,7 @@ where
 
     if includeDefaultCallbacks {
       let statisticsRecorder = StatisticsRecorder(metrics: [.loss] + metrics)
-      let progressPrinter = ProgressPrinter()
+      let progressPrinter = ProgressPrinter(accuracy: accuracy)
       self.statisticsRecorder = statisticsRecorder
       self.progressPrinter = progressPrinter
       self.callbacks = [
