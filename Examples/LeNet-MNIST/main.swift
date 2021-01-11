@@ -192,7 +192,7 @@ struct LeNetOptimizer: ParsableCommand {
     let teacherDevice_ = teacherDevice == .eager ? Device.default : Device.defaultXLA
     // let studentDevice_ = Device.default // studentDevice == .eager ? Device.default : Device.defaultXLA 
 
-    let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher") {
+    let (teacher, teacherValidationTimes) = try measureExecitionTime(prefix: "Trained teacher", nDecimalPlaces: accuracy) {
       trainTeacher(nEpochs: nEpochs, batchSize: batchSize, device: teacherDevice_)
     } log: { message, _ in
       logger.notice("\(message)")
@@ -200,7 +200,7 @@ struct LeNetOptimizer: ParsableCommand {
 
     logger.notice("Average teacher validation time: \(String(format: "%.\(accuracy)f", teacherValidationTimes.average())) seconds")
 
-    let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student") {
+    let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student", nDecimalPlaces: accuracy) {
       trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: teacher, teacherDevice: teacherDevice_, device: studentDevice == .eager ? Device.default : Device.defaultXLA)
     } log: { message, _ in
       logger.notice("\(message)")
@@ -209,7 +209,7 @@ struct LeNetOptimizer: ParsableCommand {
     logger.notice("Average student validation time: \(String(format: "%.\(accuracy)f", studentValidationTimes.average())) seconds (\(String(format: "%.\(accuracy)f", teacherValidationTimes.average() / studentValidationTimes.average())) times faster than teacher)")
 
     if disabledTeacherMode {
-      let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student") {
+      let (student, studentValidationTimes) = try measureExecitionTime(prefix: "Trained student", nDecimalPlaces: accuracy) {
         trainStudent(nEpochs: nEpochs, batchSize: batchSize, teacher: Optional.none, teacherDevice: teacherDevice_, device: studentDevice == .eager ? Device.default : Device.defaultXLA)
       } log: { message, _ in
         logger.notice("\(message)")

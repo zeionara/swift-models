@@ -23,9 +23,9 @@
             "program": "${workspaceFolder}/.build/debug/LeNet-MNIST",
             "args": [
                 "-a",
-                "4",
+                "6",
                 "-n",
-                "10",
+                "50",
                 "--teacher-device",
                 "eager",
                 "--student-device",
