@@ -50,7 +50,7 @@ Trained student in 111.172 seconds
 Average student validation time: 0.3544 seconds (2.7757 times faster than teacher)
 ```
 
-Comparison of the student model trained with and without a teacher (in this case training student without a teacher looks more attractive):
+Comparison of the student model trained with and without a teacher (in this case training student without a teacher looks more attractive since it leads to higher accuracy) - 10 epochs:
 
 ```sh
 accuracy: 0.9831
@@ -65,3 +65,20 @@ accuracy: 0.9801
 Trained student in 84.828 seconds
 Average student validation time: 0.4379 seconds
 ```
+
+Comparison of the student model trained with and without a teacher (in this case training student with a teacher looks more attractive since it is faster) - (50 epochs)
+
+```sh
+accuracy: 0.9900
+Trained teacher in 2292.463 seconds
+Average teacher validation time: 1.8186 seconds
+
+accuracy: 0.9875 (train accuracy: 0.9951)
+Trained student in 934.317 seconds
+Average student validation time: 0.4106 seconds (4.4297 times faster than teacher)
+
+accuracy: 0.9875 (train accuracy: 0.9940)
+Trained student in 407.813 seconds
+Average student validation time: 0.4194 seconds
+```
+
