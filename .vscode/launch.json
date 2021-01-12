@@ -38,6 +38,16 @@
             "env": {
                 "CUDA_VISIBLE_DEVICES": "-1"
             }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "swift-build-resnet",
+            "name": "Run resnet",
+            "program": "${workspaceFolder}/.build/debug/ResNet-CIFAR10",
+            "sourceLanguages": [
+                "swift"
+            ]
         }
     ]
 }

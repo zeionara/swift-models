@@ -10,6 +10,16 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "swift-build-resnet",
+            "type": "shell",
+            "command": "swift build --product ResNet-CIFAR10",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }

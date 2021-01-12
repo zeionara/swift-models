@@ -16,6 +16,8 @@ import Datasets
 import ImageClassificationModels
 import TensorFlow
 import TrainingLoop
+import Logging
+import ArgumentParser
 
 // Until https://github.com/tensorflow/swift-apis/issues/993 is fixed, default to the eager-mode
 // device on macOS instead of X10.
@@ -29,11 +31,12 @@ let dataset = CIFAR10(batchSize: 10, on: device)
 var model = ResNet(classCount: 10, depth: .resNet56, downsamplingInFirstStage: false)
 var optimizer = SGD(for: model, learningRate: 0.001)
 
-var trainingLoop = TrainingLoop(
+var trainingLoop = TrainingLoop<CIFAR10<SystemRandomNumberGenerator>.Training, CIFAR10<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<ResNet>, Float, Float>(
   training: dataset.training,
   validation: dataset.validation,
   optimizer: optimizer,
   lossFunction: softmaxCrossEntropy,
   metrics: [.accuracy])
 
-try! trainingLoop.fit(&model, epochs: 10, on: device)
+let teacher: ResNet? = Optional.none
+try! trainingLoop.fit(&model, epochs: 10, on: device, teacher: teacher)

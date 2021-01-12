@@ -40,7 +40,7 @@ public func measureExecitionTime<ResultType>(prefix: String = "Executed", nDecim
   return result
 }
 
-var logger = Logger(label: "training-loop")
+// var logger = Logger(label: "training-loop")
 
 /// Types whose elements represent a training loop.
 ///
@@ -309,7 +309,7 @@ where
     includeDefaultCallbacks: Bool = true,
     accuracy: Int = 3
   ) {
-    logger.logLevel = .info
+    // logger.logLevel = .info
     self.training = training
     self.validation = validation
     self.optimizer = optimizer
@@ -524,7 +524,7 @@ extension TrainingLoop {
             } catch TrainingLoopAction.cancelTraining {}
             try handleEvent(.trainingEnd)
           } log: { message, _ in
-            logger.notice("\(message)")
+            // logger.notice("\(message)")
           }
 
           // Validation phase
@@ -537,7 +537,7 @@ extension TrainingLoop {
             } catch TrainingLoopAction.cancelValidation {}
             try handleEvent(.validationEnd)
           } log: { message, elapsedTime in
-            logger.notice("\(message)")
+            // logger.notice("\(message)")
             validationTimes.append(elapsedTime)
           }
         } catch TrainingLoopAction.cancelEpoch {}
