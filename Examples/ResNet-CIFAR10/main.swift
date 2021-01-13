@@ -78,9 +78,9 @@ func trainStudent(teacher: ResNet? = Optional.none) {
   print("Average validation time: \(validationTimes.average())")
 }
 
-print("no xla")
+print("--")
 let teacher = trainTeacher(device: device)
-print("xla")
-let xlaTeacher = trainTeacher(device: .defaultXLA)
-// trainStudent(teacher: teacher)
-// trainStudent()
+// print("xla")
+// let xlaTeacher = trainTeacher(device: .defaultXLA)
+trainStudent(teacher: teacher)
+trainStudent()

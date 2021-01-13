@@ -48,6 +48,16 @@
             "sourceLanguages": [
                 "swift"
             ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "preLaunchTask": "swift-build-mobile",
+            "name": "Run mobile net",
+            "program": "${workspaceFolder}/.build/debug/MobileNetV1-Imagenette",
+            "sourceLanguages": [
+                "swift"
+            ]
         }
     ]
 }

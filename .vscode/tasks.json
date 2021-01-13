@@ -20,6 +20,16 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "swift-build-mobile",
+            "type": "shell",
+            "command": "swift build --product MobileNetV1-Imagenette",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }
