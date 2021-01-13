@@ -525,6 +525,7 @@ extension TrainingLoop {
             try handleEvent(.trainingEnd)
           } log: { message, _ in
             // logger.notice("\(message)")
+            print(message)
           }
 
           // Validation phase
@@ -538,6 +539,7 @@ extension TrainingLoop {
             try handleEvent(.validationEnd)
           } log: { message, elapsedTime in
             // logger.notice("\(message)")
+            print(message)
             validationTimes.append(elapsedTime)
           }
         } catch TrainingLoopAction.cancelEpoch {}

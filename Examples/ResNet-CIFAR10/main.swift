@@ -21,22 +21,66 @@ import ArgumentParser
 
 // Until https://github.com/tensorflow/swift-apis/issues/993 is fixed, default to the eager-mode
 // device on macOS instead of X10.
-#if os(macOS)
-  let device = Device.defaultTFEager
-#else
-  let device = Device.defaultXLA
-#endif
+// #if os(macOS)
+  // let device = Device.defaultTFEager
+// #else
+  // let device = Device.defaultXLA
+// #endif
 
-let dataset = CIFAR10(batchSize: 10, on: device)
-var model = ResNet(classCount: 10, depth: .resNet56, downsamplingInFirstStage: false)
-var optimizer = SGD(for: model, learningRate: 0.001)
+public extension Array where Element == Double {
+  public func average() -> Double {
+    return self.reduce(0, +) / Double(self.count)
+  }
+}
 
-var trainingLoop = TrainingLoop<CIFAR10<SystemRandomNumberGenerator>.Training, CIFAR10<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<ResNet>, Float, Float>(
-  training: dataset.training,
-  validation: dataset.validation,
-  optimizer: optimizer,
-  lossFunction: softmaxCrossEntropy,
-  metrics: [.accuracy])
+let device = Device.default
+let accuracy = 5
+let batchSize = 64
+let learningRate: Float = 0.003
+let nEpochs = 10
 
-let teacher: ResNet? = Optional.none
-try! trainingLoop.fit(&model, epochs: 10, on: device, teacher: teacher)
+func trainTeacher(device: Device = .default) -> ResNet {
+  let dataset = CIFAR10(batchSize: batchSize, on: device)
+  var model = ResNet(classCount: 10, depth: .resNet56, downsamplingInFirstStage: false)
+  var optimizer = SGD(for: model, learningRate: learningRate)
+
+  var trainingLoop = TrainingLoop<CIFAR10<SystemRandomNumberGenerator>.Training, CIFAR10<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<ResNet>, Float, Float>(
+    training: dataset.training,
+    validation: dataset.validation,
+    optimizer: optimizer,
+    lossFunction: softmaxCrossEntropy,
+    metrics: [.accuracy],
+    accuracy: accuracy
+  )
+
+  let teacher: ResNet? = Optional.none
+  let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+  print("Average validation time: \(validationTimes.average())")
+
+  return model
+}
+
+func trainStudent(teacher: ResNet? = Optional.none) {
+  let dataset = CIFAR10(batchSize: batchSize, on: device)
+  var model = DistilledResNet(classCount: 10, depth: .resNet56, downsamplingInFirstStage: false)
+  var optimizer = SGD(for: model, learningRate: learningRate)
+
+  var trainingLoop = TrainingLoop<CIFAR10<SystemRandomNumberGenerator>.Training, CIFAR10<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<DistilledResNet>, Float, Float>(
+    training: dataset.training,
+    validation: dataset.validation,
+    optimizer: optimizer,
+    lossFunction: softmaxCrossEntropy,
+    metrics: [.accuracy],
+    accuracy: accuracy
+  )
+
+  let validationTimes = try! trainingLoop.fit(&model, epochs: nEpochs, on: device, teacher: teacher)
+  print("Average validation time: \(validationTimes.average())")
+}
+
+print("no xla")
+let teacher = trainTeacher(device: device)
+print("xla")
+let xlaTeacher = trainTeacher(device: .defaultXLA)
+// trainStudent(teacher: teacher)
+// trainStudent()
