@@ -1,0 +1,304 @@
+--
+Epoch 1/20
+781/781 [==============================] - loss: 1.98016 - accuracy: 0.26350Training phase has been finished in 404.47558 seconds
+
+157/157 [==============================] - loss: 1.70063 - accuracy: 0.35690Validation phase has been finished in 7.11851 seconds
+
+Epoch 2/20
+781/781 [==============================] - loss: 1.61735 - accuracy: 0.39449Training phase has been finished in 418.73046 seconds
+
+157/157 [==============================] - loss: 1.52494 - accuracy: 0.42950Validation phase has been finished in 6.87851 seconds
+
+Epoch 3/20
+781/781 [==============================] - loss: 1.48043 - accuracy: 0.45168Training phase has been finished in 416.43397 seconds
+
+157/157 [==============================] - loss: 1.40917 - accuracy: 0.48000Validation phase has been finished in 7.05687 seconds
+
+Epoch 4/20
+781/781 [==============================] - loss: 1.37838 - accuracy: 0.49632Training phase has been finished in 405.07479 seconds
+
+157/157 [==============================] - loss: 1.37916 - accuracy: 0.48730Validation phase has been finished in 6.47302 seconds
+
+Epoch 5/20
+781/781 [==============================] - loss: 1.29521 - accuracy: 0.52929Training phase has been finished in 382.46402 seconds
+
+157/157 [==============================] - loss: 1.25014 - accuracy: 0.54610Validation phase has been finished in 6.51002 seconds
+
+Epoch 6/20
+781/781 [==============================] - loss: 1.22213 - accuracy: 0.55702Training phase has been finished in 381.87067 seconds
+
+157/157 [==============================] - loss: 1.19469 - accuracy: 0.56980Validation phase has been finished in 6.43562 seconds
+
+Epoch 7/20
+781/781 [==============================] - loss: 1.15941 - accuracy: 0.58255Training phase has been finished in 382.05627 seconds
+
+157/157 [==============================] - loss: 1.17360 - accuracy: 0.57900Validation phase has been finished in 6.41879 seconds
+
+Epoch 8/20
+781/781 [==============================] - loss: 1.09886 - accuracy: 0.60623Training phase has been finished in 382.55660 seconds
+
+157/157 [==============================] - loss: 1.12062 - accuracy: 0.59520Validation phase has been finished in 6.56024 seconds
+
+Epoch 9/20
+781/781 [==============================] - loss: 1.04692 - accuracy: 0.62544Training phase has been finished in 381.84298 seconds
+
+157/157 [==============================] - loss: 1.08923 - accuracy: 0.60880Validation phase has been finished in 6.60690 seconds
+
+Epoch 10/20
+781/781 [==============================] - loss: 1.00103 - accuracy: 0.64155Training phase has been finished in 382.86880 seconds
+
+157/157 [==============================] - loss: 1.11049 - accuracy: 0.60520Validation phase has been finished in 6.54352 seconds
+
+Epoch 11/20
+781/781 [==============================] - loss: 0.95730 - accuracy: 0.65703Training phase has been finished in 382.69283 seconds
+
+157/157 [==============================] - loss: 1.07689 - accuracy: 0.61510Validation phase has been finished in 6.43954 seconds
+
+Epoch 12/20
+781/781 [==============================] - loss: 0.91506 - accuracy: 0.67306Training phase has been finished in 381.71629 seconds
+
+157/157 [==============================] - loss: 1.03479 - accuracy: 0.63020Validation phase has been finished in 6.42241 seconds
+
+Epoch 13/20
+781/781 [==============================] - loss: 0.87863 - accuracy: 0.68614Training phase has been finished in 381.69765 seconds
+
+157/157 [==============================] - loss: 1.02245 - accuracy: 0.64140Validation phase has been finished in 6.45014 seconds
+
+Epoch 14/20
+781/781 [==============================] - loss: 0.84367 - accuracy: 0.69978Training phase has been finished in 382.14973 seconds
+
+157/157 [==============================] - loss: 1.05296 - accuracy: 0.62680Validation phase has been finished in 6.48868 seconds
+
+Epoch 15/20
+781/781 [==============================] - loss: 0.80528 - accuracy: 0.71635Training phase has been finished in 381.80827 seconds
+
+157/157 [==============================] - loss: 1.04765 - accuracy: 0.63170Validation phase has been finished in 6.48495 seconds
+
+Epoch 16/20
+781/781 [==============================] - loss: 0.77106 - accuracy: 0.72779Training phase has been finished in 382.66977 seconds
+
+157/157 [==============================] - loss: 1.02581 - accuracy: 0.64520Validation phase has been finished in 6.50006 seconds
+
+Epoch 17/20
+781/781 [==============================] - loss: 0.73900 - accuracy: 0.73904Training phase has been finished in 384.00270 seconds
+
+157/157 [==============================] - loss: 0.99988 - accuracy: 0.65510Validation phase has been finished in 6.50028 seconds
+
+Epoch 18/20
+781/781 [==============================] - loss: 0.70651 - accuracy: 0.75180Training phase has been finished in 381.68741 seconds
+
+157/157 [==============================] - loss: 1.02249 - accuracy: 0.65100Validation phase has been finished in 6.41389 seconds
+
+Epoch 19/20
+781/781 [==============================] - loss: 0.67225 - accuracy: 0.76366Training phase has been finished in 373.13338 seconds
+
+157/157 [==============================] - loss: 1.06069 - accuracy: 0.64560Validation phase has been finished in 6.06532 seconds
+
+Epoch 20/20
+781/781 [==============================] - loss: 0.64182 - accuracy: 0.77449Training phase has been finished in 371.83965 seconds
+
+157/157 [==============================] - loss: 1.01415 - accuracy: 0.65520Validation phase has been finished in 5.98935 seconds
+
+Average validation time: 6.517830302050001
+Epoch 1/20
+781/781 [==============================] - loss: 1.88816 - accuracy: 0.29201Training phase has been finished in 301.37803 seconds
+
+157/157 [==============================] - loss: 1.65110 - accuracy: 0.38060Validation phase has been finished in 4.64640 seconds
+
+Epoch 2/20
+781/781 [==============================] - loss: 1.59533 - accuracy: 0.40561Training phase has been finished in 299.52971 seconds
+
+157/157 [==============================] - loss: 1.50197 - accuracy: 0.43810Validation phase has been finished in 4.17512 seconds
+
+Epoch 3/20
+781/781 [==============================] - loss: 1.47593 - accuracy: 0.45713Training phase has been finished in 300.33278 seconds
+
+157/157 [==============================] - loss: 1.39708 - accuracy: 0.48250Validation phase has been finished in 4.22353 seconds
+
+Epoch 4/20
+781/781 [==============================] - loss: 1.39142 - accuracy: 0.49618Training phase has been finished in 300.72764 seconds
+
+157/157 [==============================] - loss: 1.32012 - accuracy: 0.52060Validation phase has been finished in 4.24669 seconds
+
+Epoch 5/20
+781/781 [==============================] - loss: 1.32868 - accuracy: 0.52761Training phase has been finished in 300.82727 seconds
+
+157/157 [==============================] - loss: 1.26748 - accuracy: 0.53940Validation phase has been finished in 4.20161 seconds
+
+Epoch 6/20
+781/781 [==============================] - loss: 1.27433 - accuracy: 0.54828Training phase has been finished in 301.48613 seconds
+
+157/157 [==============================] - loss: 1.23663 - accuracy: 0.55330Validation phase has been finished in 4.19200 seconds
+
+Epoch 7/20
+781/781 [==============================] - loss: 1.23047 - accuracy: 0.56670Training phase has been finished in 300.77443 seconds
+
+157/157 [==============================] - loss: 1.19123 - accuracy: 0.56810Validation phase has been finished in 4.24716 seconds
+
+Epoch 8/20
+781/781 [==============================] - loss: 1.19394 - accuracy: 0.58265Training phase has been finished in 299.31189 seconds
+
+157/157 [==============================] - loss: 1.14746 - accuracy: 0.58990Validation phase has been finished in 4.19830 seconds
+
+Epoch 9/20
+781/781 [==============================] - loss: 1.16137 - accuracy: 0.59749Training phase has been finished in 300.36848 seconds
+
+157/157 [==============================] - loss: 1.12291 - accuracy: 0.60010Validation phase has been finished in 4.24986 seconds
+
+Epoch 10/20
+781/781 [==============================] - loss: 1.13283 - accuracy: 0.61060Training phase has been finished in 301.86938 seconds
+
+157/157 [==============================] - loss: 1.10153 - accuracy: 0.60410Validation phase has been finished in 4.26436 seconds
+
+Epoch 11/20
+781/781 [==============================] - loss: 1.10784 - accuracy: 0.62174Training phase has been finished in 300.33081 seconds
+
+157/157 [==============================] - loss: 1.07824 - accuracy: 0.61570Validation phase has been finished in 4.28479 seconds
+
+Epoch 12/20
+781/781 [==============================] - loss: 1.08531 - accuracy: 0.63300Training phase has been finished in 301.10218 seconds
+
+157/157 [==============================] - loss: 1.06503 - accuracy: 0.61810Validation phase has been finished in 4.17491 seconds
+
+Epoch 13/20
+781/781 [==============================] - loss: 1.07106 - accuracy: 0.64022Training phase has been finished in 298.97975 seconds
+
+157/157 [==============================] - loss: 1.04722 - accuracy: 0.62360Validation phase has been finished in 4.20138 seconds
+
+Epoch 14/20
+781/781 [==============================] - loss: 1.05460 - accuracy: 0.65129Training phase has been finished in 300.75787 seconds
+
+157/157 [==============================] - loss: 1.06402 - accuracy: 0.61970Validation phase has been finished in 4.25147 seconds
+
+Epoch 15/20
+781/781 [==============================] - loss: 1.03822 - accuracy: 0.65631Training phase has been finished in 300.28722 seconds
+
+157/157 [==============================] - loss: 1.02366 - accuracy: 0.63360Validation phase has been finished in 4.22670 seconds
+
+Epoch 16/20
+781/781 [==============================] - loss: 1.02620 - accuracy: 0.66141Training phase has been finished in 297.85105 seconds
+
+157/157 [==============================] - loss: 1.00244 - accuracy: 0.63900Validation phase has been finished in 4.22986 seconds
+
+Epoch 17/20
+781/781 [==============================] - loss: 1.01453 - accuracy: 0.66983Training phase has been finished in 300.94488 seconds
+
+157/157 [==============================] - loss: 0.99474 - accuracy: 0.64130Validation phase has been finished in 4.23264 seconds
+
+Epoch 18/20
+781/781 [==============================] - loss: 1.00442 - accuracy: 0.67456Training phase has been finished in 299.43380 seconds
+
+157/157 [==============================] - loss: 1.00296 - accuracy: 0.64290Validation phase has been finished in 4.25258 seconds
+
+Epoch 19/20
+781/781 [==============================] - loss: 0.99803 - accuracy: 0.67958Training phase has been finished in 300.45730 seconds
+
+157/157 [==============================] - loss: 0.97579 - accuracy: 0.64920Validation phase has been finished in 4.27221 seconds
+
+Epoch 20/20
+781/781 [==============================] - loss: 0.98636 - accuracy: 0.68412Training phase has been finished in 300.60130 seconds
+
+157/157 [==============================] - loss: 0.97178 - accuracy: 0.65170Validation phase has been finished in 4.15199 seconds
+
+Average validation time: 4.246178893149999
+Epoch 1/20
+781/781 [==============================] - loss: 1.94874 - accuracy: 0.28053Training phase has been finished in 258.40535 seconds
+
+157/157 [==============================] - loss: 1.69895 - accuracy: 0.37310Validation phase has been finished in 4.21377 seconds
+
+Epoch 2/20
+781/781 [==============================] - loss: 1.61521 - accuracy: 0.40245Training phase has been finished in 258.49171 seconds
+
+157/157 [==============================] - loss: 1.51011 - accuracy: 0.44230Validation phase has been finished in 4.23565 seconds
+
+Epoch 3/20
+781/781 [==============================] - loss: 1.48330 - accuracy: 0.45479Training phase has been finished in 257.88368 seconds
+
+157/157 [==============================] - loss: 1.43975 - accuracy: 0.46790Validation phase has been finished in 4.23548 seconds
+
+Epoch 4/20
+781/781 [==============================] - loss: 1.39256 - accuracy: 0.49040Training phase has been finished in 258.38565 seconds
+
+157/157 [==============================] - loss: 1.34755 - accuracy: 0.50820Validation phase has been finished in 4.25290 seconds
+
+Epoch 5/20
+781/781 [==============================] - loss: 1.31258 - accuracy: 0.52201Training phase has been finished in 257.82169 seconds
+
+157/157 [==============================] - loss: 1.27939 - accuracy: 0.52340Validation phase has been finished in 4.22403 seconds
+
+Epoch 6/20
+781/781 [==============================] - loss: 1.23908 - accuracy: 0.55154Training phase has been finished in 258.06559 seconds
+
+157/157 [==============================] - loss: 1.22608 - accuracy: 0.55450Validation phase has been finished in 4.21983 seconds
+
+Epoch 7/20
+781/781 [==============================] - loss: 1.17639 - accuracy: 0.57502Training phase has been finished in 258.19897 seconds
+
+157/157 [==============================] - loss: 1.17869 - accuracy: 0.57190Validation phase has been finished in 4.31018 seconds
+
+Epoch 8/20
+781/781 [==============================] - loss: 1.11871 - accuracy: 0.59715Training phase has been finished in 259.46047 seconds
+
+157/157 [==============================] - loss: 1.14640 - accuracy: 0.58260Validation phase has been finished in 4.26978 seconds
+
+Epoch 9/20
+781/781 [==============================] - loss: 1.07001 - accuracy: 0.61590Training phase has been finished in 258.28981 seconds
+
+157/157 [==============================] - loss: 1.11228 - accuracy: 0.59840Validation phase has been finished in 4.18252 seconds
+
+Epoch 10/20
+781/781 [==============================] - loss: 1.02394 - accuracy: 0.63472Training phase has been finished in 258.65175 seconds
+
+157/157 [==============================] - loss: 1.09098 - accuracy: 0.60490Validation phase has been finished in 4.21846 seconds
+
+Epoch 11/20
+781/781 [==============================] - loss: 0.98108 - accuracy: 0.65099Training phase has been finished in 258.36558 seconds
+
+157/157 [==============================] - loss: 1.04942 - accuracy: 0.62690Validation phase has been finished in 4.24583 seconds
+
+Epoch 12/20
+781/781 [==============================] - loss: 0.93754 - accuracy: 0.66649Training phase has been finished in 258.07735 seconds
+
+157/157 [==============================] - loss: 1.02229 - accuracy: 0.63540Validation phase has been finished in 4.27489 seconds
+
+Epoch 13/20
+781/781 [==============================] - loss: 0.90097 - accuracy: 0.67840Training phase has been finished in 257.77426 seconds
+
+157/157 [==============================] - loss: 0.99964 - accuracy: 0.64160Validation phase has been finished in 4.21806 seconds
+
+Epoch 14/20
+781/781 [==============================] - loss: 0.86650 - accuracy: 0.69236Training phase has been finished in 258.48895 seconds
+
+157/157 [==============================] - loss: 1.00190 - accuracy: 0.64470Validation phase has been finished in 4.26820 seconds
+
+Epoch 15/20
+781/781 [==============================] - loss: 0.83211 - accuracy: 0.70383Training phase has been finished in 257.61689 seconds
+
+157/157 [==============================] - loss: 0.97102 - accuracy: 0.65650Validation phase has been finished in 4.22807 seconds
+
+Epoch 16/20
+781/781 [==============================] - loss: 0.80160 - accuracy: 0.71453Training phase has been finished in 258.71857 seconds
+
+157/157 [==============================] - loss: 0.98203 - accuracy: 0.65690Validation phase has been finished in 4.22335 seconds
+
+Epoch 17/20
+781/781 [==============================] - loss: 0.77435 - accuracy: 0.72737Training phase has been finished in 257.98426 seconds
+
+157/157 [==============================] - loss: 0.96540 - accuracy: 0.65850Validation phase has been finished in 4.21470 seconds
+
+Epoch 18/20
+781/781 [==============================] - loss: 0.73972 - accuracy: 0.73900Training phase has been finished in 258.64891 seconds
+
+157/157 [==============================] - loss: 0.95922 - accuracy: 0.65830Validation phase has been finished in 4.24532 seconds
+
+Epoch 19/20
+781/781 [==============================] - loss: 0.71014 - accuracy: 0.74936Training phase has been finished in 258.66659 seconds
+
+157/157 [==============================] - loss: 0.99187 - accuracy: 0.65410Validation phase has been finished in 4.20338 seconds
+
+Epoch 20/20
+781/781 [==============================] - loss: 0.68226 - accuracy: 0.75868Training phase has been finished in 259.01433 seconds
+
+157/157 [==============================] - loss: 0.98204 - accuracy: 0.66030Validation phase has been finished in 4.32435 seconds
+
+Average validation time: 4.24043814715

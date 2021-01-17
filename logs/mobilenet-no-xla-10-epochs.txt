@@ -1,0 +1,49 @@
+Epoch 1/10
+781/781 [==============================] - loss: 2.105 - accuracy: 0.302Training phase has been finished in 363.227 seconds
+
+157/157 [==============================] - loss: 1.778 - accuracy: 0.358Validation phase has been finished in 6.528 seconds
+
+Epoch 2/10
+781/781 [==============================] - loss: 1.805 - accuracy: 0.403Training phase has been finished in 375.177 seconds
+
+157/157 [==============================] - loss: 1.796 - accuracy: 0.412Validation phase has been finished in 5.787 seconds
+
+Epoch 3/10
+781/781 [==============================] - loss: 1.593 - accuracy: 0.446Training phase has been finished in 381.952 seconds
+
+157/157 [==============================] - loss: 2.406 - accuracy: 0.399Validation phase has been finished in 6.631 seconds
+
+Epoch 4/10
+781/781 [==============================] - loss: 1.421 - accuracy: 0.492Training phase has been finished in 383.103 seconds
+
+157/157 [==============================] - loss: 1.371 - accuracy: 0.503Validation phase has been finished in 6.745 seconds
+
+Epoch 5/10
+781/781 [==============================] - loss: 1.262 - accuracy: 0.552Training phase has been finished in 373.681 seconds
+
+157/157 [==============================] - loss: 1.251 - accuracy: 0.559Validation phase has been finished in 6.470 seconds
+
+Epoch 6/10
+781/781 [==============================] - loss: 1.157 - accuracy: 0.588Training phase has been finished in 376.812 seconds
+
+157/157 [==============================] - loss: 1.211 - accuracy: 0.575Validation phase has been finished in 6.515 seconds
+
+Epoch 7/10
+781/781 [==============================] - loss: 1.077 - accuracy: 0.621Training phase has been finished in 375.392 seconds
+
+157/157 [==============================] - loss: 1.199 - accuracy: 0.582Validation phase has been finished in 6.660 seconds
+
+Epoch 8/10
+781/781 [==============================] - loss: 1.060 - accuracy: 0.627Training phase has been finished in 371.100 seconds
+
+157/157 [==============================] - loss: 1.133 - accuracy: 0.606Validation phase has been finished in 6.089 seconds
+
+Epoch 9/10
+781/781 [==============================] - loss: 0.953 - accuracy: 0.669Training phase has been finished in 372.187 seconds
+
+157/157 [==============================] - loss: 1.081 - accuracy: 0.617Validation phase has been finished in 6.693 seconds
+
+Epoch 10/10
+781/781 [==============================] - loss: 0.910 - accuracy: 0.682Training phase has been finished in 368.572 seconds
+
+157/157 [==============================] - loss: 1.114 - accuracy: 0.611Validation phase has been finished in 6.085 seconds

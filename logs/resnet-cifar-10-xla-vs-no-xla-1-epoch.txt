@@ -1,0 +1,15 @@
+Epoch 1/1
+781/781 [==============================] - loss: 2.21174 - accuracy: 0.20114Training phase has been finished in 1257.91866 seconds
+
+157/157 [==============================] - loss: 1.91042 - accuracy: 0.27010Validation phase has been finished in 26.05521 seconds
+
+Average validation time: 26.055206399
+Epoch 1/1
+781/781 [==============================] - loss: 2.20739 - accuracy: 0.20180Training phase has been finished in 1849.25701 seconds
+
+157/157 [==============================] - loss: 1.96974 - accuracy: 0.27170Validation phase has been finished in 128.69189 seconds
+
+Average validation time: 128.69189027
+
+
+
