@@ -14,7 +14,7 @@
 
 import ModelSupport
 import TensorFlow
-import Logging
+// import Logging
 import Foundation
 
 // Workaround https://bugs.swift.org/browse/TF-1122 that prevents us from registering a

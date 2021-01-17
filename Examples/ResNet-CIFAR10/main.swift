@@ -37,11 +37,11 @@ let device = Device.default
 let accuracy = 5
 let batchSize = 64
 let learningRate: Float = 0.003
-let nEpochs = 10
+let nEpochs = 100
 
 func trainTeacher(device: Device = .default) -> ResNet {
   let dataset = CIFAR10(batchSize: batchSize, on: device)
-  var model = ResNet(classCount: 10, depth: .resNet56, downsamplingInFirstStage: false)
+  var model = ResNet(classCount: 10, depth: .resNet152, downsamplingInFirstStage: false)
   var optimizer = SGD(for: model, learningRate: learningRate)
 
   var trainingLoop = TrainingLoop<CIFAR10<SystemRandomNumberGenerator>.Training, CIFAR10<SystemRandomNumberGenerator>.Validation, Tensor<Int32>, SGD<ResNet>, Float, Float>(
@@ -78,9 +78,10 @@ func trainStudent(teacher: ResNet? = Optional.none) {
   print("Average validation time: \(validationTimes.average())")
 }
 
-print("--")
+print("no xla")
 let teacher = trainTeacher(device: device)
-// print("xla")
-// let xlaTeacher = trainTeacher(device: .defaultXLA)
+print("xla")
+let xlaTeacher = trainTeacher(device: .defaultXLA)
 trainStudent(teacher: teacher)
-trainStudent()
+// trainStudent()
+
